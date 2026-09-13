@@ -10,6 +10,7 @@
     "start": "node dist/index.js",
     "typecheck": "tsc --noEmit",
     "seed": "tsx src/db/seed.ts",
+    "db:view": "tsx src/scripts/view-db.ts",
     "test:concurrency": "tsx src/scripts/test-concurrency.ts",
     "drizzle:generate": "drizzle-kit generate",
     "drizzle:push": "drizzle-kit push",

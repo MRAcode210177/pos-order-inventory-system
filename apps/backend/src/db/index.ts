@@ -4,6 +4,8 @@ import { PGlite } from '@electric-sql/pglite';
 import postgres from 'postgres';
 import * as schema from './schema.js';
 import dotenv from 'dotenv';
+import path from 'path';
+import fs from 'fs';
 
 dotenv.config();
 
@@ -73,13 +75,22 @@ export async function initDb() {
     }
   }
 
-  // Zero-config embedded PostgreSQL engine (PGlite)
-  console.log('Using embedded PostgreSQL engine (PGlite) for local development/testing...');
-  const pglite = new PGlite();
+  // Persistent embedded PostgreSQL engine (PGlite)
+  const baseDir = process.cwd().includes('apps/backend') || process.cwd().includes('apps\\backend')
+    ? process.cwd()
+    : path.resolve(process.cwd(), 'apps/backend');
+  const dataDir = path.resolve(baseDir, '.data/pglite');
+
+  if (!fs.existsSync(dataDir)) {
+    fs.mkdirSync(dataDir, { recursive: true });
+  }
+
+  console.log(`Using persistent PostgreSQL engine (PGlite at ${dataDir})...`);
+  const pglite = new PGlite(dataDir);
   rawClient = pglite;
   await pglite.exec(INIT_SQL);
   dbInstance = drizzlePglite(pglite, { schema });
-  console.log('Embedded PostgreSQL initialized with schema.');
+  console.log('Persistent PostgreSQL initialized with schema.');
   return dbInstance;
 }
 

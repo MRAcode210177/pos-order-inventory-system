@@ -8,6 +8,7 @@
     "typecheck": "pnpm -r typecheck",
     "build": "pnpm -r build",
     "seed": "pnpm --filter @pos/backend seed",
+    "db:view": "pnpm --filter @pos/backend db:view",
     "test:concurrency": "pnpm --filter @pos/backend test:concurrency"
   },
   "packageManager": "pnpm@10.33.2",
