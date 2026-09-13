@@ -15,7 +15,7 @@
     ],
     "paths": {
       "@/*": ["./src/*"],
-      "@pos/shared-types": ["../../packages/shared-types/src/index.ts"]
+      "@pos/shared-types": ["../../packages/shared-types/dist/index.d.ts"]
     }
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
