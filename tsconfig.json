@@ -1,0 +1,15 @@
+{
+  "compilerOptions": {
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "paths": {
+      "@pos/shared-types": ["./packages/shared-types/src/index.ts"]
+    }
+  },
+  "references": [
+    { "path": "./packages/shared-types" },
+    { "path": "./apps/backend" },
+    { "path": "./apps/frontend" }
+  ],
+  "files": []
+}

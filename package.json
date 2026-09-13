@@ -10,5 +10,8 @@
     "seed": "pnpm --filter @pos/backend seed",
     "test:concurrency": "pnpm --filter @pos/backend test:concurrency"
   },
-  "packageManager": "pnpm@10.33.2"
+  "packageManager": "pnpm@10.33.2",
+  "devDependencies": {
+    "typescript": "^5.9.3"
+  }
 }
