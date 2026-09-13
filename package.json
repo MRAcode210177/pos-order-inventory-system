@@ -1,0 +1,14 @@
+{
+  "name": "pos-order-inventory-system",
+  "private": true,
+  "scripts": {
+    "dev:backend": "pnpm --filter @pos/backend dev",
+    "dev:frontend": "pnpm --filter @pos/frontend dev",
+    "dev": "pnpm --filter \"@pos/*\" dev",
+    "typecheck": "pnpm -r typecheck",
+    "build": "pnpm -r build",
+    "seed": "pnpm --filter @pos/backend seed",
+    "test:concurrency": "pnpm --filter @pos/backend test:concurrency"
+  },
+  "packageManager": "pnpm@10.33.2"
+}

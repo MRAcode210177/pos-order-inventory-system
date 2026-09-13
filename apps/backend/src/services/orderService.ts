@@ -1,0 +1,269 @@
+import { db } from '../db/index.js';
+import { products, orders, orderItems, payments } from '../db/schema.js';
+import { sql, eq, desc } from 'drizzle-orm';
+import { AppError } from '../errors/AppError.js';
+import { toProduct, type ProductRow } from '../db/rawTypes.js';
+import type { CreateOrderRequest, OrderDto, OrderStatus } from '@pos/shared-types';
+
+export async function createOrder(request: CreateOrderRequest): Promise<OrderDto> {
+  return db.transaction(async (tx: any) => {
+    let totalCents = 0;
+    const lineItems: (typeof orderItems.$inferInsert)[] = [];
+    const itemDetails: { productId: string; quantity: number; unitPriceCents: number; productName: string }[] = [];
+
+    // Sort items by productId deterministically to prevent cross-transaction deadlocks
+    const sortedItems = [...request.items].sort((a, b) => a.productId.localeCompare(b.productId));
+
+    for (const item of sortedItems) {
+      // Execute row-locking query: SELECT * FROM products WHERE id = $1 FOR UPDATE
+      const result = await tx.execute(
+        sql`SELECT id, name, sku, price_cents, stock_quantity, version, category, image_url, created_at FROM products WHERE id = ${item.productId} FOR UPDATE`
+      );
+
+      // PGlite returns { rows: [...] }, postgres.js returns Array directly
+      const rows: ProductRow[] = Array.isArray(result) ? result : (result?.rows ?? []);
+      const row = rows[0];
+
+      if (!row) {
+        throw new AppError('NOT_FOUND', `Product with ID ${item.productId} not found`);
+      }
+
+      const product = toProduct(row);
+
+      if (product.stockQuantity < item.quantity) {
+        throw new AppError(
+          'INSUFFICIENT_STOCK',
+          `Insufficient stock for '${product.name}'. Requested: ${item.quantity}, Available: ${product.stockQuantity}`
+        );
+      }
+
+      // Decrement stock quantity atomically within transaction
+      await tx
+        .update(products)
+        .set({
+          stockQuantity: product.stockQuantity - item.quantity,
+          version: sql`${products.version} + 1`,
+        })
+        .where(eq(products.id, item.productId));
+
+      totalCents += product.priceCents * item.quantity;
+
+      lineItems.push({
+        orderId: '', // placeholder, populated after order insertion
+        productId: item.productId,
+        quantity: item.quantity,
+        unitPriceCents: product.priceCents,
+      });
+
+      itemDetails.push({
+        productId: item.productId,
+        quantity: item.quantity,
+        unitPriceCents: product.priceCents,
+        productName: product.name,
+      });
+    }
+
+    // Create order in RESERVED state with a 10-minute expiry window
+    const reservationExpiry = new Date(Date.now() + 10 * 60 * 1000);
+
+    const [order] = await tx
+      .insert(orders)
+      .values({
+        status: 'RESERVED',
+        totalCents,
+        expiresAt: reservationExpiry,
+      })
+      .returning();
+
+    if (!order) {
+      throw new AppError('VALIDATION_ERROR', 'Order creation failed unexpectedly');
+    }
+
+    // Insert order line items
+    await tx.insert(orderItems).values(
+      lineItems.map((li) => ({
+        ...li,
+        orderId: order.id,
+      }))
+    );
+
+    return {
+      id: order.id,
+      status: order.status as OrderStatus,
+      totalCents: order.totalCents,
+      expiresAt: order.expiresAt ? order.expiresAt.toISOString() : null,
+      createdAt: order.createdAt.toISOString(),
+      items: itemDetails,
+    };
+  });
+}
+
+export async function getOrderById(orderId: string): Promise<OrderDto> {
+  const [order] = await db
+    .select()
+    .from(orders)
+    .where(eq(orders.id, orderId))
+    .limit(1);
+
+  if (!order) {
+    throw new AppError('NOT_FOUND', `Order with ID ${orderId} not found`);
+  }
+
+  const items = await db
+    .select({
+      id: orderItems.id,
+      productId: orderItems.productId,
+      quantity: orderItems.quantity,
+      unitPriceCents: orderItems.unitPriceCents,
+      productName: products.name,
+    })
+    .from(orderItems)
+    .leftJoin(products, eq(orderItems.productId, products.id))
+    .where(eq(orderItems.orderId, orderId));
+
+  return {
+    id: order.id,
+    status: order.status as OrderStatus,
+    totalCents: order.totalCents,
+    expiresAt: order.expiresAt ? order.expiresAt.toISOString() : null,
+    createdAt: order.createdAt.toISOString(),
+    items: items.map((i: any) => ({
+      productId: i.productId,
+      quantity: i.quantity,
+      unitPriceCents: i.unitPriceCents,
+      productName: i.productName ?? 'Product',
+    })),
+  };
+}
+
+export async function listOrders(statusFilter?: OrderStatus): Promise<OrderDto[]> {
+  const query = db
+    .select()
+    .from(orders)
+    .orderBy(desc(orders.createdAt));
+
+  const allOrders = statusFilter
+    ? await query.where(eq(orders.status, statusFilter))
+    : await query;
+
+  const results: OrderDto[] = [];
+
+  for (const order of allOrders) {
+    const items = await db
+      .select({
+        id: orderItems.id,
+        productId: orderItems.productId,
+        quantity: orderItems.quantity,
+        unitPriceCents: orderItems.unitPriceCents,
+        productName: products.name,
+      })
+      .from(orderItems)
+      .leftJoin(products, eq(orderItems.productId, products.id))
+      .where(eq(orderItems.orderId, order.id));
+
+    results.push({
+      id: order.id,
+      status: order.status as OrderStatus,
+      totalCents: order.totalCents,
+      expiresAt: order.expiresAt ? order.expiresAt.toISOString() : null,
+      createdAt: order.createdAt.toISOString(),
+      items: items.map((i: any) => ({
+        productId: i.productId,
+        quantity: i.quantity,
+        unitPriceCents: i.unitPriceCents,
+        productName: i.productName ?? 'Product',
+      })),
+    });
+  }
+
+  return results;
+}
+
+export async function cancelOrder(orderId: string): Promise<OrderDto> {
+  return db.transaction(async (tx: any) => {
+    const result = await tx.execute(
+      sql`SELECT id, status, total_cents, created_at, expires_at FROM orders WHERE id = ${orderId} FOR UPDATE`
+    );
+    const rows = Array.isArray(result) ? result : (result?.rows ?? []);
+    const order = rows[0];
+
+    if (!order) {
+      throw new AppError('NOT_FOUND', `Order with ID ${orderId} not found`);
+    }
+
+    if (order.status === 'CANCELLED') {
+      return getOrderById(orderId);
+    }
+
+    if (order.status === 'COMPLETED' || order.status === 'PAID') {
+      throw new AppError('INVALID_STATE_TRANSITION', 'Cannot cancel an already completed or paid order');
+    }
+
+    // If order was in RESERVED state, release stock back to products
+    if (order.status === 'RESERVED' || order.status === 'PENDING') {
+      const items = await tx
+        .select()
+        .from(orderItems)
+        .where(eq(orderItems.orderId, orderId));
+
+      for (const item of items) {
+        await tx
+          .update(products)
+          .set({
+            stockQuantity: sql`${products.stockQuantity} + ${item.quantity}`,
+            version: sql`${products.version} + 1`,
+          })
+          .where(eq(products.id, item.productId));
+      }
+    }
+
+    await tx
+      .update(orders)
+      .set({ status: 'CANCELLED' })
+      .where(eq(orders.id, orderId));
+
+    return getOrderById(orderId);
+  });
+}
+
+export async function expireStaleOrders(): Promise<number> {
+  return db.transaction(async (tx: any) => {
+    const now = new Date();
+    // Select all expired reserved orders
+    const result = await tx.execute(
+      sql`SELECT id FROM orders WHERE status = 'RESERVED' AND expires_at <= ${now} FOR UPDATE`
+    );
+    const expiredRows = Array.isArray(result) ? result : (result?.rows ?? []);
+
+    let count = 0;
+    for (const row of expiredRows) {
+      const orderId = row.id;
+
+      // Restore inventory
+      const items = await tx
+        .select()
+        .from(orderItems)
+        .where(eq(orderItems.orderId, orderId));
+
+      for (const item of items) {
+        await tx
+          .update(products)
+          .set({
+            stockQuantity: sql`${products.stockQuantity} + ${item.quantity}`,
+            version: sql`${products.version} + 1`,
+          })
+          .where(eq(products.id, item.productId));
+      }
+
+      // Mark order as EXPIRED
+      await tx
+        .update(orders)
+        .set({ status: 'EXPIRED' })
+        .where(eq(orders.id, orderId));
+
+      count++;
+    }
+
+    return count;
+  });
+}
