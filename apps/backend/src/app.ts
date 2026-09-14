@@ -11,7 +11,7 @@ export const app = express();
 app.use(
   cors({
     origin: '*', // Allow all origins for easy development / demo
-    methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'Idempotency-Key'],
   })
 );

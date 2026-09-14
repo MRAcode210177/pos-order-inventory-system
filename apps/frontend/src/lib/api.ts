@@ -12,8 +12,9 @@ import type {
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
 
 async function request<T>(endpoint: string, options?: RequestInit): Promise<ApiResult<T>> {
+  const url = `${API_BASE}${endpoint}`;
   try {
-    const res = await fetch(`${API_BASE}${endpoint}`, {
+    const res = await fetch(url, {
       ...options,
       headers: {
         'Content-Type': 'application/json',
@@ -24,6 +25,7 @@ async function request<T>(endpoint: string, options?: RequestInit): Promise<ApiR
     const data = (await res.json()) as ApiResult<T>;
     return data;
   } catch (err: any) {
+    console.error(`❌ [Frontend API Network Failure] ${options?.method || 'GET'} ${url}:`, err);
     return {
       ok: false,
       error: {
@@ -35,10 +37,15 @@ async function request<T>(endpoint: string, options?: RequestInit): Promise<ApiR
 }
 
 // Products API
-export async function fetchProducts(search?: string, category?: string): Promise<ApiResult<ProductDto[]>> {
+export async function fetchProducts(
+  search?: string,
+  category?: string,
+  includeInactive: boolean = false
+): Promise<ApiResult<ProductDto[]>> {
   const params = new URLSearchParams();
   if (search) params.set('search', search);
   if (category && category !== 'All') params.set('category', category);
+  if (includeInactive) params.set('includeInactive', 'true');
   const query = params.toString() ? `?${params.toString()}` : '';
   return request<ProductDto[]>(`/products${query}`);
 }
@@ -51,6 +58,25 @@ export async function createProduct(data: CreateProductRequest): Promise<ApiResu
   return request<ProductDto>('/products', {
     method: 'POST',
     body: JSON.stringify(data),
+  });
+}
+
+export async function updateProduct(id: string, data: Partial<CreateProductRequest>): Promise<ApiResult<ProductDto>> {
+  return request<ProductDto>(`/products/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function toggleProductStatus(id: string): Promise<ApiResult<ProductDto>> {
+  return request<ProductDto>(`/products/${id}/toggle-status`, {
+    method: 'PATCH',
+  });
+}
+
+export async function deleteProduct(id: string): Promise<ApiResult<{ id: string; name: string }>> {
+  return request<{ id: string; name: string }>(`/products/${id}`, {
+    method: 'DELETE',
   });
 }
 
