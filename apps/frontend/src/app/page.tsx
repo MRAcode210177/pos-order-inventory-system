@@ -6,7 +6,7 @@ import { fetchProducts, createOrder, cancelOrder } from '@/lib/api';
 import { ProductCard } from '@/components/ProductCard';
 import { CartDrawer, type CartItem } from '@/components/CartDrawer';
 import { CheckoutModal } from '@/components/CheckoutModal';
-import { Search, RefreshCw, AlertTriangle, Sparkles, Filter } from 'lucide-react';
+import { Search, RefreshCw, AlertTriangle, Filter } from 'lucide-react';
 
 export default function POSTerminalPage() {
   const [products, setProducts] = useState<ProductDto[]>([]);
@@ -136,19 +136,19 @@ export default function POSTerminalPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="w-full space-y-6">
       {/* Top Banner / Hero */}
-      <div className="glass-card rounded-2xl p-5 border border-white/10 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+      <div className="glass-card rounded-2xl p-5 border border-border flex flex-col md:flex-row items-start md:items-center justify-between gap-4 shadow-sm">
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="font-heading font-extrabold text-2xl text-white tracking-tight">
+            <h1 className="font-heading font-extrabold text-2xl text-foreground tracking-tight">
               Cashier Terminal
             </h1>
-            <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-brand-500/10 text-brand-400 border border-brand-500/20">
+            <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-primary/10 text-primary border border-primary/20">
               Live DB Stock
             </span>
           </div>
-          <p className="text-sm text-slate-400 mt-0.5">
+          <p className="text-sm text-muted-foreground mt-0.5">
             Select items to build an order. Stock is locked via PostgreSQL transactions upon reservation.
           </p>
         </div>
@@ -156,19 +156,19 @@ export default function POSTerminalPage() {
         <button
           onClick={loadProducts}
           disabled={isLoadingProducts}
-          className="flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-800/80 hover:bg-slate-700/80 text-slate-300 hover:text-white border border-white/10 text-xs font-semibold transition-all shadow-sm"
+          className="flex items-center gap-2 px-4 py-2 rounded-xl bg-card hover:bg-accent text-muted-foreground hover:text-foreground border border-border text-xs font-semibold transition-all shadow-sm"
         >
-          <RefreshCw className={`w-3.5 h-3.5 ${isLoadingProducts ? 'animate-spin text-brand-400' : ''}`} />
+          <RefreshCw className={`w-3.5 h-3.5 ${isLoadingProducts ? 'animate-spin text-primary' : ''}`} />
           <span>Sync Stock</span>
         </button>
       </div>
 
-      {/* Main Grid: Catalog (Left) + Cart Drawer (Right) */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-        {/* Product Catalog Section (8 Columns) */}
-        <div className="lg:col-span-8 space-y-4">
+      {/* Main Responsive Layout: Dynamic Catalog + Expanded Sticky Cart */}
+      <div className="flex flex-col xl:flex-row gap-6 items-start w-full">
+        {/* Product Catalog Section: Fluid and expanding */}
+        <div className="flex-1 w-full min-w-0 space-y-4">
           {/* Search & Category Filter Bar */}
-          <div className="glass-panel rounded-2xl p-4 border border-white/10 space-y-3">
+          <div className="glass-panel rounded-2xl p-4 border border-border space-y-3 shadow-sm">
             {/* Search Input */}
             <div className="relative">
               <input
@@ -176,14 +176,14 @@ export default function POSTerminalPage() {
                 placeholder="Search products by name or SKU (e.g. Nitro, BEV-LAT)..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full px-4 py-2.5 pl-10 rounded-xl bg-slate-900/90 border border-white/10 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 transition-all"
+                className="w-full px-4 py-2.5 pl-10 rounded-xl bg-background border border-border text-sm text-foreground placeholder-muted-foreground focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all shadow-inner"
               />
-              <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
+              <Search className="w-4 h-4 text-muted-foreground absolute left-3.5 top-3" />
             </div>
 
             {/* Category Pills */}
             <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
-              <span className="text-xs text-slate-400 flex items-center gap-1 shrink-0 mr-1">
+              <span className="text-xs text-muted-foreground flex items-center gap-1 shrink-0 mr-1 font-medium">
                 <Filter className="w-3.5 h-3.5" /> Category:
               </span>
               {categories.map((cat) => (
@@ -192,8 +192,8 @@ export default function POSTerminalPage() {
                   onClick={() => setSelectedCategory(cat)}
                   className={`px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-all ${
                     selectedCategory === cat
-                      ? 'bg-brand-500 text-slate-950 font-bold shadow-sm'
-                      : 'bg-slate-900/60 text-slate-300 hover:bg-white/10 border border-white/5'
+                      ? 'bg-primary text-primary-foreground font-bold shadow-sm'
+                      : 'bg-card text-muted-foreground hover:text-foreground hover:bg-accent border border-border'
                   }`}
                 >
                   {cat}
@@ -202,28 +202,28 @@ export default function POSTerminalPage() {
             </div>
           </div>
 
-          {/* Products Grid */}
+          {/* Dynamic Responsive Product Grid (1-2 mobile, 3 tablet, 4 laptop, 5-6 ultrawide) */}
           {isLoadingProducts ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-              {Array.from({ length: 6 }).map((_, i) => (
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-3 2xl:grid-cols-4 3xl:grid-cols-6 gap-4">
+              {Array.from({ length: 8 }).map((_, i) => (
                 <div
                   key={i}
-                  className="glass-card rounded-2xl h-72 animate-pulse bg-slate-800/40 border border-white/5"
+                  className="glass-card rounded-2xl h-72 animate-pulse bg-muted/50 border border-border"
                 />
               ))}
             </div>
           ) : filteredProducts.length === 0 ? (
-            <div className="glass-card rounded-2xl p-12 text-center border border-white/10 space-y-3">
-              <div className="w-12 h-12 mx-auto rounded-xl bg-slate-800/60 flex items-center justify-center text-slate-500">
+            <div className="glass-card rounded-2xl p-12 text-center border border-border space-y-3">
+              <div className="w-12 h-12 mx-auto rounded-xl bg-muted flex items-center justify-center text-muted-foreground">
                 <AlertTriangle className="w-6 h-6" />
               </div>
-              <h3 className="font-semibold text-slate-200">No products found</h3>
-              <p className="text-xs text-slate-400 max-w-sm mx-auto">
+              <h3 className="font-semibold text-foreground">No products found</h3>
+              <p className="text-xs text-muted-foreground max-w-sm mx-auto">
                 No items match your filter criteria. Try adjusting your search query or category filter.
               </p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-3 2xl:grid-cols-4 3xl:grid-cols-6 gap-4">
               {filteredProducts.map((product) => {
                 const inCart = cart.find((c) => c.product.id === product.id)?.quantity || 0;
                 return (
@@ -239,8 +239,8 @@ export default function POSTerminalPage() {
           )}
         </div>
 
-        {/* Sticky POS Cart Sidebar (4 Columns) */}
-        <div className="lg:col-span-4 sticky top-20">
+        {/* Sticky POS Cart Panel: Wider, dedicated width on desktop/ultrawide */}
+        <div className="w-full xl:w-[400px] 2xl:w-[440px] 3xl:w-[480px] shrink-0 sticky top-20">
           <CartDrawer
             items={cart}
             onUpdateQuantity={handleUpdateCartQuantity}
