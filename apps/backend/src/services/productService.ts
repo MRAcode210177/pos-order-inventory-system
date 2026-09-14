@@ -2,13 +2,15 @@ import { db } from '../db/index.js';
 import { products, orderItems } from '../db/schema.js';
 import { eq, ne, ilike, and, desc, sql } from 'drizzle-orm';
 import { AppError } from '../errors/AppError.js';
-import type { ProductDto, CreateProductRequest, UpdateProductRequest } from '@pos/shared-types';
+import type { ProductDto, CreateProductRequest, UpdateProductRequest, PaginationMeta } from '@pos/shared-types';
 
 export async function listProducts(
   search?: string,
   category?: string,
-  includeInactive: boolean = false
-): Promise<ProductDto[]> {
+  includeInactive: boolean = false,
+  page?: number,
+  limit?: number
+): Promise<{ items: ProductDto[]; pagination: PaginationMeta }> {
   const conditions = [];
 
   // Filter out inactive products unless explicitly requested (e.g. for Inventory Management)
@@ -24,13 +26,35 @@ export async function listProducts(
     conditions.push(eq(products.category, category.trim()));
   }
 
-  const rows = await db
+  const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+
+  // Calculate total matching records
+  const [countResult] = await db
+    .select({ total: sql<number>`cast(count(*) as integer)` })
+    .from(products)
+    .where(whereClause);
+
+  const total = Number(countResult?.total ?? 0);
+  // Sanitize limit (clamp between 1 and 100 to prevent DoS memory exhaustion)
+  const pageLimit = Math.min(Math.max(1, limit && limit > 0 ? limit : (page ? 10 : (total > 0 ? total : 10))), 100);
+  const totalPages = Math.max(1, Math.ceil(total / pageLimit));
+  // Sanitize page (clamp minimum to 1)
+  const currentPage = Math.max(1, page && page > 0 ? page : 1);
+  const offset = (currentPage - 1) * pageLimit;
+
+  let query = db
     .select()
     .from(products)
-    .where(conditions.length > 0 ? and(...conditions) : undefined)
+    .where(whereClause)
     .orderBy(desc(products.createdAt));
 
-  return rows.map((p: typeof products.$inferSelect) => ({
+  if (page || limit) {
+    query = query.limit(pageLimit).offset(offset);
+  }
+
+  const rows = await query;
+
+  const items = rows.map((p: typeof products.$inferSelect) => ({
     id: p.id,
     name: p.name,
     sku: p.sku,
@@ -42,6 +66,16 @@ export async function listProducts(
     isActive: p.isActive,
     createdAt: p.createdAt.toISOString(),
   }));
+
+  return {
+    items,
+    pagination: {
+      total,
+      totalPages,
+      currentPage,
+      limit: pageLimit,
+    },
+  };
 }
 
 export async function getProductById(id: string): Promise<ProductDto> {

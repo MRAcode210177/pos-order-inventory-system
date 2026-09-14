@@ -1,9 +1,9 @@
 import { db } from '../db/index.js';
-import { products, orders, orderItems } from '../db/schema.js';
+import { products, orders, orderItems, payments } from '../db/schema.js';
 import { sql, eq, desc } from 'drizzle-orm';
 import { AppError } from '../errors/AppError.js';
 import { toProduct, type ProductRow } from '../db/rawTypes.js';
-import type { CreateOrderRequest, OrderDto, OrderStatus } from '@pos/shared-types';
+import type { CreateOrderRequest, OrderDto, OrderStatus, PaginationMeta } from '@pos/shared-types';
 
 export async function createOrder(request: CreateOrderRequest): Promise<OrderDto> {
   return db.transaction(async (tx: any) => {
@@ -121,6 +121,13 @@ export async function getOrderById(orderId: string): Promise<OrderDto> {
     .leftJoin(products, eq(orderItems.productId, products.id))
     .where(eq(orderItems.orderId, orderId));
 
+  const [paymentRecord] = await db
+    .select()
+    .from(payments)
+    .where(eq(payments.orderId, orderId))
+    .orderBy(desc(payments.createdAt))
+    .limit(1);
+
   return {
     id: order.id,
     status: order.status as OrderStatus,
@@ -133,22 +140,52 @@ export async function getOrderById(orderId: string): Promise<OrderDto> {
       unitPriceCents: i.unitPriceCents,
       productName: i.productName ?? 'Product',
     })),
+    payment: paymentRecord
+      ? {
+          id: paymentRecord.id,
+          status: paymentRecord.status,
+          transactionId: paymentRecord.transactionId ?? undefined,
+          createdAt: new Date(paymentRecord.createdAt).toISOString(),
+        }
+      : null,
   };
 }
 
-export async function listOrders(statusFilter?: OrderStatus): Promise<OrderDto[]> {
-  const query = db
+export async function listOrders(
+  statusFilter?: OrderStatus,
+  page?: number,
+  limit?: number
+): Promise<{ items: OrderDto[]; pagination: PaginationMeta }> {
+  const whereClause = statusFilter ? eq(orders.status, statusFilter) : undefined;
+
+  // Calculate total matching records
+  const [countResult] = await db
+    .select({ total: sql<number>`cast(count(*) as integer)` })
+    .from(orders)
+    .where(whereClause);
+
+  const total = Number(countResult?.total ?? 0);
+  // Sanitize limit (clamp between 1 and 100 to prevent DoS memory exhaustion)
+  const pageLimit = Math.min(Math.max(1, limit && limit > 0 ? limit : (page ? 10 : (total > 0 ? total : 10))), 100);
+  const totalPages = Math.max(1, Math.ceil(total / pageLimit));
+  // Sanitize page (clamp minimum to 1)
+  const currentPage = Math.max(1, page && page > 0 ? page : 1);
+  const offset = (currentPage - 1) * pageLimit;
+
+  let query = db
     .select()
     .from(orders)
+    .where(whereClause)
     .orderBy(desc(orders.createdAt));
 
-  const allOrders = statusFilter
-    ? await query.where(eq(orders.status, statusFilter))
-    : await query;
+  if (page || limit) {
+    query = query.limit(pageLimit).offset(offset);
+  }
 
+  const paginatedOrders = await query;
   const results: OrderDto[] = [];
 
-  for (const order of allOrders) {
+  for (const order of paginatedOrders) {
     const items = await db
       .select({
         id: orderItems.id,
@@ -160,6 +197,13 @@ export async function listOrders(statusFilter?: OrderStatus): Promise<OrderDto[]
       .from(orderItems)
       .leftJoin(products, eq(orderItems.productId, products.id))
       .where(eq(orderItems.orderId, order.id));
+
+    const [paymentRecord] = await db
+      .select()
+      .from(payments)
+      .where(eq(payments.orderId, order.id))
+      .orderBy(desc(payments.createdAt))
+      .limit(1);
 
     results.push({
       id: order.id,
@@ -173,10 +217,26 @@ export async function listOrders(statusFilter?: OrderStatus): Promise<OrderDto[]
         unitPriceCents: i.unitPriceCents,
         productName: i.productName ?? 'Product',
       })),
+      payment: paymentRecord
+        ? {
+            id: paymentRecord.id,
+            status: paymentRecord.status,
+            transactionId: paymentRecord.transactionId ?? undefined,
+            createdAt: new Date(paymentRecord.createdAt).toISOString(),
+          }
+        : null,
     });
   }
 
-  return results;
+  return {
+    items: results,
+    pagination: {
+      total,
+      totalPages,
+      currentPage,
+      limit: pageLimit,
+    },
+  };
 }
 
 export async function cancelOrder(orderId: string): Promise<OrderDto> {

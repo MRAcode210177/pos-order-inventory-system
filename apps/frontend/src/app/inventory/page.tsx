@@ -1,9 +1,10 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import type { ProductDto, CreateProductRequest, UpdateProductRequest } from '@pos/shared-types';
+import type { ProductDto, CreateProductRequest, UpdateProductRequest, PaginationMeta } from '@pos/shared-types';
 import { fetchProducts, updateProductStock, createProduct, updateProduct, deleteProduct, toggleProductStatus } from '@/lib/api';
 import { formatCurrency, cn } from '@/lib/utils';
+import { Pagination } from '@/components/Pagination';
 import {
   Database,
   Plus,
@@ -19,6 +20,14 @@ import {
 export default function InventoryPage() {
   const [products, setProducts] = useState<ProductDto[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [page, setPage] = useState<number>(1);
+  const [limit] = useState<number>(8);
+  const [pagination, setPagination] = useState<PaginationMeta>({
+    total: 0,
+    totalPages: 1,
+    currentPage: 1,
+    limit: 8,
+  });
   const [adjustingId, setAdjustingId] = useState<string | null>(null);
   const [showAddModal, setShowAddModal] = useState<boolean>(false);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
@@ -66,18 +75,28 @@ export default function InventoryPage() {
     imageUrl: '',
   });
 
-  const loadInventory = async () => {
+  const loadInventory = async (targetPage: number = page) => {
     setIsLoading(true);
-    const result = await fetchProducts(undefined, undefined, true);
+    const result = await fetchProducts(undefined, undefined, true, targetPage, limit);
     if (result.ok) {
       setProducts(result.data);
+      if (result.pagination) {
+        setPagination(result.pagination);
+      } else {
+        setPagination({
+          total: result.data.length,
+          totalPages: Math.max(1, Math.ceil(result.data.length / limit)),
+          currentPage: targetPage,
+          limit,
+        });
+      }
     }
     setIsLoading(false);
   };
 
   useEffect(() => {
-    loadInventory();
-  }, []);
+    loadInventory(page);
+  }, [page]);
 
   // Quick Stock Adjustment
   const handleStockDelta = async (productId: string, delta: number) => {
@@ -252,7 +271,7 @@ export default function InventoryPage() {
 
         <div className="flex items-center gap-2.5">
           <button
-            onClick={loadInventory}
+            onClick={() => loadInventory()}
             disabled={isLoading}
             className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-card hover:bg-accent text-muted-foreground hover:text-foreground text-xs font-semibold border border-border transition-all shadow-sm"
           >
@@ -479,6 +498,15 @@ export default function InventoryPage() {
             </tbody>
           </table>
         </div>
+
+        {/* Enterprise Pagination Component */}
+        <Pagination
+          currentPage={pagination.currentPage}
+          totalPages={pagination.totalPages}
+          total={pagination.total}
+          limit={pagination.limit}
+          onPageChange={(newPage) => setPage(newPage)}
+        />
       </div>
 
       {/* Add Product Modal */}

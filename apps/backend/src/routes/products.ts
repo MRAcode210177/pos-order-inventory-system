@@ -18,14 +18,20 @@ import type { ApiResult, ProductDto } from '@pos/shared-types';
 
 export const productsRouter = Router();
 
-// GET /api/products — list products (supports ?includeInactive=true)
+// GET /api/products — list products (supports ?includeInactive=true, page, limit, search, category)
 productsRouter.get('/', async (req, res, next) => {
   try {
     const search = req.query['search'] ? String(req.query['search']) : undefined;
     const category = req.query['category'] ? String(req.query['category']) : undefined;
     const includeInactive = req.query['includeInactive'] === 'true';
-    const products = await listProducts(search, category, includeInactive);
-    const body: ApiResult<ProductDto[]> = { ok: true, data: products };
+    const page = req.query['page'] ? parseInt(String(req.query['page']), 10) : undefined;
+    const limit = req.query['limit'] ? parseInt(String(req.query['limit']), 10) : undefined;
+    const result = await listProducts(search, category, includeInactive, page, limit);
+    const body: ApiResult<ProductDto[]> = {
+      ok: true,
+      data: result.items,
+      pagination: result.pagination,
+    };
     res.json(body);
   } catch (err) {
     next(err);
