@@ -11,6 +11,7 @@ export interface ProductRow {
   version: number;
   category: string | null;
   image_url: string | null;
+  is_active?: boolean | null;
   created_at: Date | string;
 }
 
@@ -24,6 +25,7 @@ export function toProduct(row: ProductRow): Product {
     version: row.version,
     category: row.category ?? 'General',
     imageUrl: row.image_url ?? null,
+    isActive: row.is_active ?? true,
     createdAt: typeof row.created_at === 'string' ? new Date(row.created_at) : row.created_at,
   };
 }

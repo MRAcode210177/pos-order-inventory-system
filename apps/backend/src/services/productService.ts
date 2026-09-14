@@ -1,11 +1,20 @@
 import { db } from '../db/index.js';
-import { products } from '../db/schema.js';
-import { eq, ilike, and, desc, sql } from 'drizzle-orm';
+import { products, orderItems } from '../db/schema.js';
+import { eq, ne, ilike, and, desc, sql } from 'drizzle-orm';
 import { AppError } from '../errors/AppError.js';
-import type { ProductDto, CreateProductRequest } from '@pos/shared-types';
+import type { ProductDto, CreateProductRequest, UpdateProductRequest } from '@pos/shared-types';
 
-export async function listProducts(search?: string, category?: string): Promise<ProductDto[]> {
+export async function listProducts(
+  search?: string,
+  category?: string,
+  includeInactive: boolean = false
+): Promise<ProductDto[]> {
   const conditions = [];
+
+  // Filter out inactive products unless explicitly requested (e.g. for Inventory Management)
+  if (!includeInactive) {
+    conditions.push(eq(products.isActive, true));
+  }
 
   if (search && search.trim() !== '') {
     conditions.push(ilike(products.name, `%${search.trim()}%`));
@@ -30,6 +39,7 @@ export async function listProducts(search?: string, category?: string): Promise<
     version: p.version,
     category: p.category ?? 'General',
     imageUrl: p.imageUrl ?? undefined,
+    isActive: p.isActive,
     createdAt: p.createdAt.toISOString(),
   }));
 }
@@ -54,6 +64,7 @@ export async function getProductById(id: string): Promise<ProductDto> {
     version: product.version,
     category: product.category ?? 'General',
     imageUrl: product.imageUrl ?? undefined,
+    isActive: product.isActive,
     createdAt: product.createdAt.toISOString(),
   };
 }
@@ -78,6 +89,7 @@ export async function createProduct(data: CreateProductRequest): Promise<Product
       stockQuantity: data.stockQuantity,
       category: data.category ?? 'General',
       imageUrl: data.imageUrl ?? null,
+      isActive: data.isActive ?? true,
     })
     .returning();
 
@@ -94,7 +106,136 @@ export async function createProduct(data: CreateProductRequest): Promise<Product
     version: inserted.version,
     category: inserted.category ?? 'General',
     imageUrl: inserted.imageUrl ?? undefined,
+    isActive: inserted.isActive,
     createdAt: inserted.createdAt.toISOString(),
+  };
+}
+
+export async function updateProduct(id: string, data: UpdateProductRequest): Promise<ProductDto> {
+  const [existing] = await db
+    .select()
+    .from(products)
+    .where(eq(products.id, id))
+    .limit(1);
+
+  if (!existing) {
+    throw new AppError('NOT_FOUND', `Product with ID ${id} not found`);
+  }
+
+  // If SKU is being modified, verify uniqueness against other products
+  if (data.sku && data.sku !== existing.sku) {
+    const [skuConflict] = await db
+      .select()
+      .from(products)
+      .where(and(eq(products.sku, data.sku), ne(products.id, id)))
+      .limit(1);
+
+    if (skuConflict) {
+      throw new AppError('VALIDATION_ERROR', `Product SKU '${data.sku}' is already in use by another product`);
+    }
+  }
+
+  const [updated] = await db
+    .update(products)
+    .set({
+      name: data.name ?? existing.name,
+      sku: data.sku ?? existing.sku,
+      priceCents: data.priceCents ?? existing.priceCents,
+      stockQuantity: data.stockQuantity ?? existing.stockQuantity,
+      category: data.category !== undefined ? data.category : existing.category,
+      imageUrl: data.imageUrl !== undefined ? (data.imageUrl ? data.imageUrl : null) : existing.imageUrl,
+      isActive: data.isActive !== undefined ? data.isActive : existing.isActive,
+      version: sql`${products.version} + 1`,
+    })
+    .where(eq(products.id, id))
+    .returning();
+
+  if (!updated) {
+    throw new AppError('VALIDATION_ERROR', 'Failed to update product details');
+  }
+
+  return {
+    id: updated.id,
+    name: updated.name,
+    sku: updated.sku,
+    priceCents: updated.priceCents,
+    stockQuantity: updated.stockQuantity,
+    version: updated.version,
+    category: updated.category ?? 'General',
+    imageUrl: updated.imageUrl ?? undefined,
+    isActive: updated.isActive,
+    createdAt: updated.createdAt.toISOString(),
+  };
+}
+
+export async function toggleProductStatus(id: string): Promise<ProductDto> {
+  const [existing] = await db
+    .select()
+    .from(products)
+    .where(eq(products.id, id))
+    .limit(1);
+
+  if (!existing) {
+    throw new AppError('NOT_FOUND', `Product with ID ${id} not found`);
+  }
+
+  const [updated] = await db
+    .update(products)
+    .set({
+      isActive: !existing.isActive,
+      version: sql`${products.version} + 1`,
+    })
+    .where(eq(products.id, id))
+    .returning();
+
+  if (!updated) {
+    throw new AppError('VALIDATION_ERROR', 'Failed to toggle product status');
+  }
+
+  return {
+    id: updated.id,
+    name: updated.name,
+    sku: updated.sku,
+    priceCents: updated.priceCents,
+    stockQuantity: updated.stockQuantity,
+    version: updated.version,
+    category: updated.category ?? 'General',
+    imageUrl: updated.imageUrl ?? undefined,
+    isActive: updated.isActive,
+    createdAt: updated.createdAt.toISOString(),
+  };
+}
+
+export async function deleteProduct(id: string): Promise<{ id: string; name: string }> {
+  const [existing] = await db
+    .select()
+    .from(products)
+    .where(eq(products.id, id))
+    .limit(1);
+
+  if (!existing) {
+    throw new AppError('NOT_FOUND', `Product with ID ${id} not found`);
+  }
+
+  // Check Foreign Key constraints: prevent deleting products linked to past order items
+  const [orderItemRef] = await db
+    .select({ id: orderItems.id })
+    .from(orderItems)
+    .where(eq(orderItems.productId, id))
+    .limit(1);
+
+  if (orderItemRef) {
+    throw new AppError(
+      'VALIDATION_ERROR',
+      `Cannot delete product '${existing.name}' (${existing.sku}) because it is referenced in completed or active orders. To preserve historical receipt data, toggle status to Inactive/Archived instead.`
+    );
+  }
+
+  await db.delete(products).where(eq(products.id, id));
+
+  return {
+    id: existing.id,
+    name: existing.name,
   };
 }
 
@@ -136,7 +277,10 @@ export async function updateStock(id: string, delta: number): Promise<ProductDto
       version: updated.version,
       category: updated.category ?? 'General',
       imageUrl: updated.imageUrl ?? undefined,
+      isActive: updated.isActive,
       createdAt: updated.createdAt.toISOString(),
     };
   });
 }
+
+

@@ -1,4 +1,4 @@
-import { pgTable, uuid, varchar, integer, timestamp, pgEnum } from 'drizzle-orm/pg-core';
+import { pgTable, uuid, varchar, integer, timestamp, pgEnum, boolean } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
 import { ORDER_STATUSES } from '@pos/shared-types';
 
@@ -13,6 +13,7 @@ export const products = pgTable('products', {
   version: integer('version').notNull().default(0),
   category: varchar('category', { length: 64 }).default('General'),
   imageUrl: varchar('image_url', { length: 512 }),
+  isActive: boolean('is_active').notNull().default(true),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
 

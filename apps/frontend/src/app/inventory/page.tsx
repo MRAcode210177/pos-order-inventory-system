@@ -1,8 +1,8 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import type { ProductDto, CreateProductRequest } from '@pos/shared-types';
-import { fetchProducts, updateProductStock, createProduct } from '@/lib/api';
+import type { ProductDto, CreateProductRequest, UpdateProductRequest } from '@pos/shared-types';
+import { fetchProducts, updateProductStock, createProduct, updateProduct, deleteProduct, toggleProductStatus } from '@/lib/api';
 import { formatCurrency, cn } from '@/lib/utils';
 import {
   Database,
@@ -11,6 +11,9 @@ import {
   AlertTriangle,
   X,
   Loader2,
+  Pencil,
+  Trash2,
+  CheckCircle2,
 } from 'lucide-react';
 
 export default function InventoryPage() {
@@ -21,7 +24,32 @@ export default function InventoryPage() {
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [formError, setFormError] = useState<string | null>(null);
 
-  // Form State
+  // Edit & Delete Modal States
+  const [editingProduct, setEditingProduct] = useState<ProductDto | null>(null);
+  const [editFormData, setEditFormData] = useState<{
+    name: string;
+    sku: string;
+    price: string;
+    stockQuantity: string;
+    category: string;
+    imageUrl: string;
+  }>({
+    name: '',
+    sku: '',
+    price: '',
+    stockQuantity: '',
+    category: 'Beverages',
+    imageUrl: '',
+  });
+  const [editError, setEditError] = useState<string | null>(null);
+  const [isEditSubmitting, setIsEditSubmitting] = useState<boolean>(false);
+  const [togglingId, setTogglingId] = useState<string | null>(null);
+
+  const [deletingProduct, setDeletingProduct] = useState<ProductDto | null>(null);
+  const [isDeleting, setIsDeleting] = useState<boolean>(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+
+  // Add Product Form State
   const [formData, setFormData] = useState<{
     name: string;
     sku: string;
@@ -40,7 +68,7 @@ export default function InventoryPage() {
 
   const loadInventory = async () => {
     setIsLoading(true);
-    const result = await fetchProducts();
+    const result = await fetchProducts(undefined, undefined, true);
     if (result.ok) {
       setProducts(result.data);
     }
@@ -61,6 +89,20 @@ export default function InventoryPage() {
       );
     }
     setAdjustingId(null);
+  };
+
+  // Toggle Product Status (Active / Archived)
+  const handleToggleStatus = async (productId: string) => {
+    setTogglingId(productId);
+    const result = await toggleProductStatus(productId);
+    setTogglingId(null);
+    if (result.ok) {
+      setProducts((prev) =>
+        prev.map((p) => (p.id === productId ? { ...p, isActive: result.data.isActive } : p))
+      );
+    } else {
+      alert(result.error.message || 'Failed to update product status');
+    }
   };
 
   // Create Product Submit
@@ -112,6 +154,81 @@ export default function InventoryPage() {
     }
   };
 
+  // Open Edit Modal
+  const handleOpenEdit = (product: ProductDto) => {
+    setEditingProduct(product);
+    setEditFormData({
+      name: product.name,
+      sku: product.sku,
+      price: (product.priceCents / 100).toFixed(2),
+      stockQuantity: product.stockQuantity.toString(),
+      category: product.category || 'Beverages',
+      imageUrl: product.imageUrl || '',
+    });
+    setEditError(null);
+  };
+
+  // Edit Product Submit
+  const handleEditProduct = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingProduct) return;
+
+    setIsEditSubmitting(true);
+    setEditError(null);
+
+    const priceCents = Math.round(parseFloat(editFormData.price) * 100);
+    const stockQty = parseInt(editFormData.stockQuantity, 10);
+
+    if (isNaN(priceCents) || priceCents < 0) {
+      setEditError('Please enter a valid price');
+      setIsEditSubmitting(false);
+      return;
+    }
+
+    if (isNaN(stockQty) || stockQty < 0) {
+      setEditError('Please enter a valid stock quantity');
+      setIsEditSubmitting(false);
+      return;
+    }
+
+    const payload: UpdateProductRequest = {
+      name: editFormData.name.trim(),
+      sku: editFormData.sku.trim().toUpperCase(),
+      priceCents,
+      stockQuantity: stockQty,
+      category: editFormData.category,
+      imageUrl: editFormData.imageUrl.trim() || undefined,
+    };
+
+    const result = await updateProduct(editingProduct.id, payload);
+    setIsEditSubmitting(false);
+
+    if (result.ok) {
+      setEditingProduct(null);
+      loadInventory();
+    } else {
+      setEditError(result.error.message || 'Failed to update product details');
+    }
+  };
+
+  // Delete Product Confirmation Submit
+  const handleDeleteProduct = async () => {
+    if (!deletingProduct) return;
+
+    setIsDeleting(true);
+    setDeleteError(null);
+
+    const result = await deleteProduct(deletingProduct.id);
+    setIsDeleting(false);
+
+    if (result.ok) {
+      setDeletingProduct(null);
+      loadInventory();
+    } else {
+      setDeleteError(result.error.message || 'Failed to delete product');
+    }
+  };
+
   // Metrics
   const totalStockUnits = products.reduce((sum, p) => sum + p.stockQuantity, 0);
   const lowStockCount = products.filter((p) => p.stockQuantity > 0 && p.stockQuantity <= 5).length;
@@ -128,7 +245,7 @@ export default function InventoryPage() {
           <div>
             <h1 className="font-heading font-extrabold text-2xl text-foreground">Inventory Manager</h1>
             <p className="text-xs text-muted-foreground">
-              Live stock levels, row versions, and instant stock replenishment controls.
+              Live stock levels, row versions, inline editing, and instant replenishment controls.
             </p>
           </div>
         </div>
@@ -189,14 +306,16 @@ export default function InventoryPage() {
                 <th className="py-3.5 px-4">Category</th>
                 <th className="py-3.5 px-4">Price</th>
                 <th className="py-3.5 px-4">Stock Level</th>
+                <th className="py-3.5 px-4">Status</th>
                 <th className="py-3.5 px-4">DB Version</th>
-                <th className="py-3.5 px-4 text-right">Quick Restock / Adjust</th>
+                <th className="py-3.5 px-4">Quick Restock</th>
+                <th className="py-3.5 px-4 text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border/60">
               {isLoading && products.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="py-12 text-center text-muted-foreground">
+                  <td colSpan={8} className="py-12 text-center text-muted-foreground">
                     <Loader2 className="w-6 h-6 animate-spin mx-auto text-primary mb-2" />
                     Loading product inventory...
                   </td>
@@ -258,12 +377,44 @@ export default function InventoryPage() {
                       </div>
                     </td>
 
+                    <td className="py-3.5 px-4">
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          disabled={togglingId === product.id}
+                          onClick={() => handleToggleStatus(product.id)}
+                          className={cn(
+                            'relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none shadow-xs disabled:opacity-50',
+                            product.isActive ? 'bg-emerald-500' : 'bg-muted-foreground/30'
+                          )}
+                          title={product.isActive ? 'Click to Archive (Soft Delete)' : 'Click to Activate'}
+                        >
+                          <span
+                            className={cn(
+                              'pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out',
+                              product.isActive ? 'translate-x-4' : 'translate-x-0'
+                            )}
+                          />
+                        </button>
+                        <span
+                          className={cn(
+                            'text-[11px] font-semibold px-2 py-0.5 rounded-full border',
+                            product.isActive
+                              ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20'
+                              : 'bg-muted text-muted-foreground border-border'
+                          )}
+                        >
+                          {product.isActive ? 'Active' : 'Archived'}
+                        </span>
+                      </div>
+                    </td>
+
                     <td className="py-3.5 px-4 font-mono text-muted-foreground">
                       v{product.version}
                     </td>
 
-                    <td className="py-3.5 px-4 text-right">
-                      <div className="flex items-center justify-end gap-1">
+                    <td className="py-3.5 px-4">
+                      <div className="flex items-center gap-1">
                         <button
                           onClick={() => handleStockDelta(product.id, -1)}
                           disabled={isAdjusting || product.stockQuantity <= 0}
@@ -295,6 +446,30 @@ export default function InventoryPage() {
                           className="px-2 py-1 rounded bg-primary text-primary-foreground hover:bg-primary/90 text-xs font-mono font-bold shadow-sm"
                         >
                           +20
+                        </button>
+                      </div>
+                    </td>
+
+                    <td className="py-3.5 px-4 text-right">
+                      <div className="flex items-center justify-end gap-2">
+                        <button
+                          onClick={() => handleOpenEdit(product)}
+                          className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-primary/10 hover:bg-primary/20 text-primary border border-primary/30 transition-all text-xs font-semibold shadow-xs"
+                          title="Edit Product Details"
+                        >
+                          <Pencil className="w-3.5 h-3.5" />
+                          <span>Edit</span>
+                        </button>
+                        <button
+                          onClick={() => {
+                            setDeletingProduct(product);
+                            setDeleteError(null);
+                          }}
+                          className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-destructive/10 hover:bg-destructive/20 text-destructive border border-destructive/30 transition-all text-xs font-semibold shadow-xs"
+                          title="Delete Product"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                          <span>Delete</span>
                         </button>
                       </div>
                     </td>
@@ -438,6 +613,208 @@ export default function InventoryPage() {
           </div>
         </div>
       )}
+
+      {/* Edit Product Modal */}
+      {editingProduct && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-md animate-fadeIn">
+          <div className="w-full max-w-md glass-panel rounded-2xl border border-border shadow-2xl overflow-hidden animate-scaleUp">
+            <div className="p-5 border-b border-border flex items-center justify-between bg-card/80">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
+                  <Pencil className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="font-heading font-bold text-base text-foreground">Edit Product Details</h3>
+                  <p className="text-[10px] text-muted-foreground font-mono">ID: {editingProduct.id.substring(0, 8)}... (v{editingProduct.version})</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setEditingProduct(null)}
+                className="text-muted-foreground hover:text-foreground"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleEditProduct} className="p-5 space-y-4">
+              {editError && (
+                <div className="p-3 rounded-xl bg-destructive/15 border border-destructive/30 text-destructive text-xs flex items-center gap-2">
+                  <AlertTriangle className="w-4 h-4 shrink-0" />
+                  <span>{editError}</span>
+                </div>
+              )}
+
+              <div>
+                <label className="text-xs font-medium text-foreground block mb-1">Product Name</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Lavender Honey Latte"
+                  value={editFormData.name}
+                  onChange={(e) => setEditFormData({ ...editFormData, name: e.target.value })}
+                  className="w-full px-3 py-2 rounded-xl bg-background border border-border text-xs text-foreground focus:outline-none focus:border-primary shadow-inner"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-medium text-foreground block mb-1">SKU Code</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="BEV-LAV-01"
+                    value={editFormData.sku}
+                    onChange={(e) => setEditFormData({ ...editFormData, sku: e.target.value })}
+                    className="w-full px-3 py-2 rounded-xl bg-background border border-border text-xs font-mono text-foreground focus:outline-none focus:border-primary uppercase shadow-inner"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs font-medium text-foreground block mb-1">Category</label>
+                  <select
+                    value={editFormData.category}
+                    onChange={(e) => setEditFormData({ ...editFormData, category: e.target.value })}
+                    className="w-full px-3 py-2 rounded-xl bg-background border border-border text-xs text-foreground focus:outline-none focus:border-primary shadow-inner"
+                  >
+                    <option value="Beverages">Beverages</option>
+                    <option value="Bakery">Bakery</option>
+                    <option value="Merchandise">Merchandise</option>
+                    <option value="Food">Food</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-medium text-foreground block mb-1">Price (USD $)</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    required
+                    placeholder="5.75"
+                    value={editFormData.price}
+                    onChange={(e) => setEditFormData({ ...editFormData, price: e.target.value })}
+                    className="w-full px-3 py-2 rounded-xl bg-background border border-border text-xs font-mono text-foreground focus:outline-none focus:border-primary shadow-inner"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs font-medium text-foreground block mb-1">Stock Quantity</label>
+                  <input
+                    type="number"
+                    required
+                    min="0"
+                    placeholder="15"
+                    value={editFormData.stockQuantity}
+                    onChange={(e) => setEditFormData({ ...editFormData, stockQuantity: e.target.value })}
+                    className="w-full px-3 py-2 rounded-xl bg-background border border-border text-xs font-mono text-foreground focus:outline-none focus:border-primary shadow-inner"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="text-xs font-medium text-foreground block mb-1">Image URL (Optional)</label>
+                <input
+                  type="url"
+                  placeholder="https://images.unsplash.com/..."
+                  value={editFormData.imageUrl}
+                  onChange={(e) => setEditFormData({ ...editFormData, imageUrl: e.target.value })}
+                  className="w-full px-3 py-2 rounded-xl bg-background border border-border text-xs text-foreground focus:outline-none focus:border-primary shadow-inner"
+                />
+              </div>
+
+              <div className="pt-2 flex items-center justify-end gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => setEditingProduct(null)}
+                  className="px-4 py-2 rounded-xl bg-card hover:bg-accent text-muted-foreground hover:text-foreground text-xs font-semibold border border-border"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isEditSubmitting}
+                  className="px-5 py-2 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-bold shadow-glow flex items-center gap-1.5"
+                >
+                  {isEditSubmitting ? (
+                    <>
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" /> Updating...
+                    </>
+                  ) : (
+                    'Update Product'
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Dialog Modal */}
+      {deletingProduct && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-md animate-fadeIn">
+          <div className="w-full max-w-md glass-panel rounded-2xl border border-destructive/30 shadow-2xl overflow-hidden animate-scaleUp">
+            <div className="p-5 border-b border-border flex items-center justify-between bg-destructive/10">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-destructive/20 text-destructive flex items-center justify-center">
+                  <Trash2 className="w-4 h-4" />
+                </div>
+                <h3 className="font-heading font-bold text-base text-foreground">Delete Product</h3>
+              </div>
+              <button
+                onClick={() => setDeletingProduct(null)}
+                className="text-muted-foreground hover:text-foreground"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="p-5 space-y-4">
+              {deleteError ? (
+                <div className="p-3 rounded-xl bg-destructive/15 border border-destructive/30 text-destructive text-xs space-y-1">
+                  <div className="flex items-center gap-2 font-semibold">
+                    <AlertTriangle className="w-4 h-4 shrink-0" />
+                    <span>Cannot Delete Product</span>
+                  </div>
+                  <p className="text-destructive/90 pl-6 leading-relaxed">{deleteError}</p>
+                </div>
+              ) : (
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  Are you sure you want to delete <strong className="text-foreground">{deletingProduct.name}</strong> (<span className="font-mono text-primary">{deletingProduct.sku}</span>)?
+                  This action is permanent and will remove the item from the catalog.
+                </p>
+              )}
+
+              <div className="pt-2 flex items-center justify-end gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => setDeletingProduct(null)}
+                  className="px-4 py-2 rounded-xl bg-card hover:bg-accent text-muted-foreground hover:text-foreground text-xs font-semibold border border-border"
+                >
+                  {deleteError ? 'Close' : 'Cancel'}
+                </button>
+                {!deleteError && (
+                  <button
+                    type="button"
+                    onClick={handleDeleteProduct}
+                    disabled={isDeleting}
+                    className="px-5 py-2 rounded-xl bg-destructive hover:bg-destructive/90 text-destructive-foreground text-xs font-bold shadow-sm flex items-center gap-1.5"
+                  >
+                    {isDeleting ? (
+                      <>
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" /> Deleting...
+                      </>
+                    ) : (
+                      'Confirm Delete'
+                    )}
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
+

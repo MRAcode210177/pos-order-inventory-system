@@ -22,6 +22,7 @@ async function displayDatabaseSummary() {
       SKU: p.sku,
       Price: `$${(p.priceCents / 100).toFixed(2)}`,
       Stock: p.stockQuantity,
+      Status: p.isActive ? 'Active' : 'Archived',
       Version: `v${p.version}`,
       Category: p.category,
     }));

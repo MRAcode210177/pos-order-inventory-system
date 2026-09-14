@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { ShoppingBag, Layers, Database, Zap, Sparkles } from 'lucide-react';
+import { ShoppingBag, Layers, Database, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ThemeToggle } from '@/components/ThemeToggle';
 
@@ -30,7 +30,6 @@ export function Navbar() {
     { href: '/', label: 'POS Terminal', icon: ShoppingBag },
     { href: '/orders', label: 'Order Lifecycle', icon: Layers },
     { href: '/inventory', label: 'Inventory Manager', icon: Database },
-    { href: '/stress-test', label: 'Concurrency Race Visualizer', icon: Zap, highlight: true },
   ];
 
   return (
@@ -68,8 +67,7 @@ export function Navbar() {
                   'flex items-center gap-2 px-3 sm:px-3.5 py-2 rounded-xl text-xs sm:text-sm font-medium transition-all duration-150 whitespace-nowrap',
                   isActive
                     ? 'bg-primary/10 text-primary border border-primary/30 shadow-sm font-semibold'
-                    : 'text-muted-foreground hover:text-foreground hover:bg-muted/60 border border-transparent',
-                  item.highlight && !isActive && 'text-amber-600 dark:text-amber-300 hover:text-amber-500 hover:bg-amber-500/10'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-muted/60 border border-transparent'
                 )}
               >
                 <Icon className={cn('w-4 h-4', isActive ? 'text-primary' : 'text-muted-foreground')} />
