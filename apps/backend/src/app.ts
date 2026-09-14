@@ -17,6 +17,21 @@ app.use(
 );
 app.use(express.json());
 
+// Request Logger Middleware
+app.use((req, res, next) => {
+  const start = Date.now();
+  const { method, url } = req;
+  res.on('finish', () => {
+    const duration = Date.now() - start;
+    const status = res.statusCode;
+    const isError = status >= 400;
+    const icon = isError ? '⚠️' : '✅';
+    console.log(`${icon} [${method}] ${url} -> ${status} (${duration}ms)`);
+  });
+
+  next();
+});
+
 // Health Check
 app.get('/api/health', (_req, res) => {
   const body: ApiResult<{ status: string; timestamp: string }> = {

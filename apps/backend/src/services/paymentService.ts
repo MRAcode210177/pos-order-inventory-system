@@ -1,5 +1,5 @@
 import { db } from '../db/index.js';
-import { orders, payments } from '../db/schema.js';
+import { orders, payments, orderItems, products } from '../db/schema.js';
 import { sql, eq } from 'drizzle-orm';
 import { AppError } from '../errors/AppError.js';
 import { mockPaymentGateway } from './mockPaymentGateway.js';
@@ -36,14 +36,14 @@ export async function processPayment(
           status: existingPayment.status,
           idempotencyKey: existingPayment.idempotencyKey,
           transactionId: existingPayment.transactionId ?? undefined,
-          createdAt: existingPayment.createdAt.toISOString(),
+          createdAt: new Date(existingPayment.createdAt).toISOString(),
         },
       };
     }
 
-    // 2. Lock Order row for payment processing
+    // 2. Lock Order row for payment processing and evaluate expiry using SQL NOW()
     const result = await tx.execute(
-      sql`SELECT id, status, total_cents, expires_at FROM orders WHERE id = ${orderId} FOR UPDATE`
+      sql`SELECT id, status, total_cents, expires_at, (expires_at IS NOT NULL AND expires_at < NOW()) AS is_expired FROM orders WHERE id = ${orderId} FOR UPDATE`
     );
     const rows = Array.isArray(result) ? result : (result?.rows ?? []);
     const order = rows[0];
@@ -60,16 +60,29 @@ export async function processPayment(
       throw new AppError('INVALID_STATE_TRANSITION', 'Order has been cancelled and cannot be paid');
     }
 
-    if (order.status === 'EXPIRED') {
-      throw new AppError('ORDER_EXPIRED', 'Order reservation has expired and inventory was released');
-    }
+    if (order.status === 'EXPIRED' || order.is_expired) {
+      // If expired, restore inventory and update status
+      if (order.status === 'RESERVED') {
+        const items = await tx
+          .select()
+          .from(orderItems)
+          .where(eq(orderItems.orderId, orderId));
 
-    if (order.expires_at && new Date(order.expires_at).getTime() < Date.now()) {
-      // Mark as expired in DB
-      await tx
-        .update(orders)
-        .set({ status: 'EXPIRED' })
-        .where(eq(orders.id, orderId));
+        for (const item of items) {
+          await tx
+            .update(products)
+            .set({
+              stockQuantity: sql`${products.stockQuantity} + ${item.quantity}`,
+              version: sql`${products.version} + 1`,
+            })
+            .where(eq(products.id, item.productId));
+        }
+
+        await tx
+          .update(orders)
+          .set({ status: 'EXPIRED' })
+          .where(eq(orders.id, orderId));
+      }
 
       throw new AppError('ORDER_EXPIRED', 'Order reservation time limit has passed. Stock has been returned.');
     }
@@ -124,7 +137,7 @@ export async function processPayment(
         status: paymentRecord.status,
         idempotencyKey: paymentRecord.idempotencyKey,
         transactionId: paymentRecord.transactionId ?? undefined,
-        createdAt: paymentRecord.createdAt.toISOString(),
+        createdAt: new Date(paymentRecord.createdAt).toISOString(),
       },
     };
   });

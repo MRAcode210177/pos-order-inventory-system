@@ -1,5 +1,5 @@
 import { db } from '../db/index.js';
-import { products, orders, orderItems, payments } from '../db/schema.js';
+import { products, orders, orderItems } from '../db/schema.js';
 import { sql, eq, desc } from 'drizzle-orm';
 import { AppError } from '../errors/AppError.js';
 import { toProduct, type ProductRow } from '../db/rawTypes.js';
@@ -91,8 +91,8 @@ export async function createOrder(request: CreateOrderRequest): Promise<OrderDto
       id: order.id,
       status: order.status as OrderStatus,
       totalCents: order.totalCents,
-      expiresAt: order.expiresAt ? order.expiresAt.toISOString() : null,
-      createdAt: order.createdAt.toISOString(),
+      expiresAt: order.expiresAt ? new Date(order.expiresAt).toISOString() : null,
+      createdAt: new Date(order.createdAt).toISOString(),
       items: itemDetails,
     };
   });
@@ -125,8 +125,8 @@ export async function getOrderById(orderId: string): Promise<OrderDto> {
     id: order.id,
     status: order.status as OrderStatus,
     totalCents: order.totalCents,
-    expiresAt: order.expiresAt ? order.expiresAt.toISOString() : null,
-    createdAt: order.createdAt.toISOString(),
+    expiresAt: order.expiresAt ? new Date(order.expiresAt).toISOString() : null,
+    createdAt: new Date(order.createdAt).toISOString(),
     items: items.map((i: any) => ({
       productId: i.productId,
       quantity: i.quantity,
@@ -165,8 +165,8 @@ export async function listOrders(statusFilter?: OrderStatus): Promise<OrderDto[]
       id: order.id,
       status: order.status as OrderStatus,
       totalCents: order.totalCents,
-      expiresAt: order.expiresAt ? order.expiresAt.toISOString() : null,
-      createdAt: order.createdAt.toISOString(),
+      expiresAt: order.expiresAt ? new Date(order.expiresAt).toISOString() : null,
+      createdAt: new Date(order.createdAt).toISOString(),
       items: items.map((i: any) => ({
         productId: i.productId,
         quantity: i.quantity,
@@ -228,10 +228,9 @@ export async function cancelOrder(orderId: string): Promise<OrderDto> {
 
 export async function expireStaleOrders(): Promise<number> {
   return db.transaction(async (tx: any) => {
-    const now = new Date();
-    // Select all expired reserved orders
+    // Select all expired reserved orders using SQL NOW() to prevent Date serialization issues
     const result = await tx.execute(
-      sql`SELECT id FROM orders WHERE status = 'RESERVED' AND expires_at <= ${now} FOR UPDATE`
+      sql`SELECT id FROM orders WHERE status = 'RESERVED' AND expires_at <= NOW() FOR UPDATE`
     );
     const expiredRows = Array.isArray(result) ? result : (result?.rows ?? []);
 

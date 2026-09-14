@@ -2,8 +2,10 @@ import type { ErrorRequestHandler } from 'express';
 import { AppError } from '../errors/AppError.js';
 import type { ApiResult } from '@pos/shared-types';
 
-export const errorHandler: ErrorRequestHandler = (err, _req, res, _next) => {
-  const body: ApiResult<never> = err instanceof AppError
+export const errorHandler: ErrorRequestHandler = (err, req, res, _next) => {
+  const isAppError = err instanceof AppError;
+
+  const body: ApiResult<never> = isAppError
     ? {
         ok: false,
         error: {
@@ -20,9 +22,13 @@ export const errorHandler: ErrorRequestHandler = (err, _req, res, _next) => {
         },
       };
 
-  const status = err instanceof AppError ? err.statusCode : 500;
-  if (!(err instanceof AppError)) {
-    console.error('Unhandled server error:', err);
+  const status = isAppError ? err.statusCode : 500;
+
+  if (isAppError) {
+    console.warn(`❌ [AppError ${status}] ${err.code}: ${err.message} on ${req.method} ${req.originalUrl}`);
+  } else {
+    console.error(`💥 [ServerError 500] Unhandled error on ${req.method} ${req.originalUrl}:`, err);
   }
+
   res.status(status).json(body);
 };
