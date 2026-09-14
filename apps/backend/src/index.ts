@@ -22,8 +22,8 @@ async function bootstrap() {
     // 4. Start HTTP Server
     app.listen(PORT, () => {
       console.log(`
-🚀 POS Backend Server running at http://localhost:${PORT}
-📦 Endpoints:
+    POS Backend Server running at http://localhost:${PORT}
+    Endpoints:
    • GET   /api/health
    • GET   /api/products
    • POST  /api/products
