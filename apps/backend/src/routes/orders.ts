@@ -23,12 +23,18 @@ ordersRouter.post('/', validate(createOrderSchema), async (req, res, next) => {
   }
 });
 
-// GET /api/orders — List all orders
+// GET /api/orders — List all orders (supports ?status=..., page, limit)
 ordersRouter.get('/', async (req, res, next) => {
   try {
     const status = req.query['status'] ? (String(req.query['status']) as OrderStatus) : undefined;
-    const ordersList = await listOrders(status);
-    const body: ApiResult<OrderDto[]> = { ok: true, data: ordersList };
+    const page = req.query['page'] ? parseInt(String(req.query['page']), 10) : undefined;
+    const limit = req.query['limit'] ? parseInt(String(req.query['limit']), 10) : undefined;
+    const result = await listOrders(status, page, limit);
+    const body: ApiResult<OrderDto[]> = {
+      ok: true,
+      data: result.items,
+      pagination: result.pagination,
+    };
     res.json(body);
   } catch (err) {
     next(err);

@@ -40,12 +40,16 @@ async function request<T>(endpoint: string, options?: RequestInit): Promise<ApiR
 export async function fetchProducts(
   search?: string,
   category?: string,
-  includeInactive: boolean = false
+  includeInactive: boolean = false,
+  page?: number,
+  limit?: number
 ): Promise<ApiResult<ProductDto[]>> {
   const params = new URLSearchParams();
   if (search) params.set('search', search);
   if (category && category !== 'All') params.set('category', category);
   if (includeInactive) params.set('includeInactive', 'true');
+  if (page) params.set('page', page.toString());
+  if (limit) params.set('limit', limit.toString());
   const query = params.toString() ? `?${params.toString()}` : '';
   return request<ProductDto[]>(`/products${query}`);
 }
@@ -95,8 +99,16 @@ export async function createOrder(data: CreateOrderRequest): Promise<ApiResult<O
   });
 }
 
-export async function fetchOrders(status?: OrderStatus): Promise<ApiResult<OrderDto[]>> {
-  const query = status ? `?status=${status}` : '';
+export async function fetchOrders(
+  status?: OrderStatus,
+  page?: number,
+  limit?: number
+): Promise<ApiResult<OrderDto[]>> {
+  const params = new URLSearchParams();
+  if (status) params.set('status', status);
+  if (page) params.set('page', page.toString());
+  if (limit) params.set('limit', limit.toString());
+  const query = params.toString() ? `?${params.toString()}` : '';
   return request<OrderDto[]>(`/orders${query}`);
 }
 

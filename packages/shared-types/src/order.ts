@@ -24,6 +24,12 @@ export interface OrderDto {
   expiresAt: string | null;
   createdAt?: string;
   items: OrderItemDto[];
+  payment?: {
+    id: string;
+    status: string;
+    transactionId?: string;
+    createdAt?: string;
+  } | null;
 }
 
 export interface CreateOrderRequest {

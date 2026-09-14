@@ -38,9 +38,9 @@ export function CartDrawer({
   const totalItemsCount = items.reduce((sum, item) => sum + item.quantity, 0);
 
   return (
-    <div className="glass-panel rounded-2xl border border-border flex flex-col h-full overflow-hidden shadow-xl">
-      {/* Header */}
-      <div className="p-4 border-b border-border flex items-center justify-between bg-card/60">
+    <div className="glass-panel rounded-2xl border border-border flex flex-col h-[calc(100vh-6rem)] supports-[height:100dvh]:h-[calc(100dvh-6rem)] max-h-[850px] overflow-hidden shadow-xl">
+      {/* Header (Fixed) */}
+      <div className="shrink-0 p-4 border-b border-border flex items-center justify-between bg-card/60">
         <div className="flex items-center gap-2.5">
           <div className="w-8 h-8 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center text-primary">
             <ShoppingCart className="w-4 h-4" />
@@ -64,9 +64,9 @@ export function CartDrawer({
         )}
       </div>
 
-      {/* Error Alert if any */}
+      {/* Error Alert if any (Fixed) */}
       {errorMessage && (
-        <div className="mx-4 mt-4 p-3 rounded-xl bg-destructive/10 border border-destructive/20 text-destructive text-xs flex items-start gap-2.5 animate-shake">
+        <div className="shrink-0 mx-4 mt-4 p-3 rounded-xl bg-destructive/10 border border-destructive/20 text-destructive text-xs flex items-start gap-2.5 animate-shake">
           <AlertCircle className="w-4 h-4 text-destructive shrink-0 mt-0.5" />
           <div className="flex-1">
             <p className="font-semibold">Order Reservation Failed</p>
@@ -75,10 +75,10 @@ export function CartDrawer({
         </div>
       )}
 
-      {/* Items List */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-3 min-h-[220px] max-h-[calc(100vh-380px)] lg:max-h-[calc(100vh-360px)]">
+      {/* Items List (Scrollable flex-1 min-h-0) */}
+      <div className="flex-1 overflow-y-auto p-4 space-y-3 min-h-0">
         {items.length === 0 ? (
-          <div className="h-full min-h-[200px] flex flex-col items-center justify-center text-center p-6 border border-dashed border-border rounded-xl">
+          <div className="h-full flex flex-col items-center justify-center text-center p-6 border border-dashed border-border rounded-xl">
             <div className="w-14 h-14 rounded-2xl bg-muted flex items-center justify-center text-muted-foreground mb-3">
               <ShoppingCart className="w-7 h-7" />
             </div>
@@ -141,9 +141,9 @@ export function CartDrawer({
         )}
       </div>
 
-      {/* Summary Footer */}
+      {/* Summary Footer (Fixed at bottom) */}
       {items.length > 0 && (
-        <div className="p-4 border-t border-border bg-card/80 space-y-3">
+        <div className="shrink-0 p-4 border-t border-border bg-card/80 space-y-3">
           <div className="space-y-1.5 text-xs text-muted-foreground">
             <div className="flex justify-between">
               <span>Subtotal</span>
