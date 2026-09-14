@@ -3,19 +3,14 @@
 import React, { useEffect, useState } from 'react';
 import type { ProductDto, CreateProductRequest } from '@pos/shared-types';
 import { fetchProducts, updateProductStock, createProduct } from '@/lib/api';
-import { formatCurrency, formatDateTime, cn } from '@/lib/utils';
+import { formatCurrency, cn } from '@/lib/utils';
 import {
   Database,
   Plus,
-  Minus,
   RefreshCw,
   AlertTriangle,
-  Package,
-  Layers,
-  Sparkles,
   X,
   Loader2,
-  CheckCircle2,
 } from 'lucide-react';
 
 export default function InventoryPage() {
@@ -123,16 +118,16 @@ export default function InventoryPage() {
   const outOfStockCount = products.filter((p) => p.stockQuantity === 0).length;
 
   return (
-    <div className="space-y-6">
+    <div className="w-full space-y-6">
       {/* Header */}
-      <div className="glass-card rounded-2xl p-5 border border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="glass-card rounded-2xl p-5 border border-border flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-brand-500/20 border border-brand-500/30 flex items-center justify-center text-brand-400">
+          <div className="w-10 h-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary">
             <Database className="w-5 h-5" />
           </div>
           <div>
-            <h1 className="font-heading font-extrabold text-2xl text-white">Inventory Manager</h1>
-            <p className="text-xs text-slate-400">
+            <h1 className="font-heading font-extrabold text-2xl text-foreground">Inventory Manager</h1>
+            <p className="text-xs text-muted-foreground">
               Live stock levels, row versions, and instant stock replenishment controls.
             </p>
           </div>
@@ -142,14 +137,14 @@ export default function InventoryPage() {
           <button
             onClick={loadInventory}
             disabled={isLoading}
-            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold border border-white/10 transition-all"
+            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-card hover:bg-accent text-muted-foreground hover:text-foreground text-xs font-semibold border border-border transition-all shadow-sm"
           >
-            <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin text-brand-400' : ''}`} />
+            <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin text-primary' : ''}`} />
             <span>Sync</span>
           </button>
           <button
             onClick={() => setShowAddModal(true)}
-            className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-brand-500 hover:bg-brand-400 text-slate-950 text-xs font-bold shadow-glow transition-all"
+            className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-bold shadow-glow transition-all"
           >
             <Plus className="w-4 h-4" />
             <span>Add Product</span>
@@ -159,36 +154,36 @@ export default function InventoryPage() {
 
       {/* KPI Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="glass-panel p-4 rounded-2xl border border-white/10">
-          <p className="text-xs text-slate-400 font-medium">Catalog SKUs</p>
-          <p className="font-heading font-extrabold text-2xl text-white mt-1">{products.length}</p>
-          <span className="text-[10px] text-slate-500">Active items</span>
+        <div className="glass-panel p-4 rounded-2xl border border-border shadow-sm">
+          <p className="text-xs text-muted-foreground font-medium">Catalog SKUs</p>
+          <p className="font-heading font-extrabold text-2xl text-foreground mt-1">{products.length}</p>
+          <span className="text-[10px] text-muted-foreground">Active items</span>
         </div>
 
-        <div className="glass-panel p-4 rounded-2xl border border-white/10">
-          <p className="text-xs text-slate-400 font-medium">Total Stock in Hand</p>
-          <p className="font-heading font-extrabold text-2xl text-brand-400 mt-1">{totalStockUnits}</p>
-          <span className="text-[10px] text-slate-500">Available across all products</span>
+        <div className="glass-panel p-4 rounded-2xl border border-border shadow-sm">
+          <p className="text-xs text-muted-foreground font-medium">Total Stock in Hand</p>
+          <p className="font-heading font-extrabold text-2xl text-primary mt-1">{totalStockUnits}</p>
+          <span className="text-[10px] text-muted-foreground">Available across all products</span>
         </div>
 
-        <div className="glass-panel p-4 rounded-2xl border border-white/10">
-          <p className="text-xs text-slate-400 font-medium">Low Stock Warning</p>
-          <p className="font-heading font-extrabold text-2xl text-amber-400 mt-1">{lowStockCount}</p>
-          <span className="text-[10px] text-amber-400/80">{"<= 5 units remaining"}</span>
+        <div className="glass-panel p-4 rounded-2xl border border-border shadow-sm">
+          <p className="text-xs text-muted-foreground font-medium">Low Stock Warning</p>
+          <p className="font-heading font-extrabold text-2xl text-amber-500 mt-1">{lowStockCount}</p>
+          <span className="text-[10px] text-amber-600 dark:text-amber-400">{"<= 5 units remaining"}</span>
         </div>
 
-        <div className="glass-panel p-4 rounded-2xl border border-white/10">
-          <p className="text-xs text-slate-400 font-medium">Out of Stock</p>
-          <p className="font-heading font-extrabold text-2xl text-rose-400 mt-1">{outOfStockCount}</p>
-          <span className="text-[10px] text-rose-400/80">Require immediate restock</span>
+        <div className="glass-panel p-4 rounded-2xl border border-border shadow-sm">
+          <p className="text-xs text-muted-foreground font-medium">Out of Stock</p>
+          <p className="font-heading font-extrabold text-2xl text-destructive mt-1">{outOfStockCount}</p>
+          <span className="text-[10px] text-destructive">Require immediate restock</span>
         </div>
       </div>
 
       {/* Inventory Table */}
-      <div className="glass-panel rounded-2xl border border-white/10 overflow-hidden">
+      <div className="glass-panel rounded-2xl border border-border overflow-hidden shadow-sm">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs">
-            <thead className="bg-slate-900/80 text-slate-400 border-b border-white/10 uppercase tracking-wider font-semibold">
+            <thead className="bg-card text-muted-foreground border-b border-border uppercase tracking-wider font-semibold">
               <tr>
                 <th className="py-3.5 px-4">Product Details</th>
                 <th className="py-3.5 px-4">Category</th>
@@ -198,11 +193,11 @@ export default function InventoryPage() {
                 <th className="py-3.5 px-4 text-right">Quick Restock / Adjust</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-white/5">
+            <tbody className="divide-y divide-border/60">
               {isLoading && products.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="py-12 text-center text-slate-500">
-                    <Loader2 className="w-6 h-6 animate-spin mx-auto text-brand-400 mb-2" />
+                  <td colSpan={6} className="py-12 text-center text-muted-foreground">
+                    <Loader2 className="w-6 h-6 animate-spin mx-auto text-primary mb-2" />
                     Loading product inventory...
                   </td>
                 </tr>
@@ -212,34 +207,34 @@ export default function InventoryPage() {
                 const isLowStock = product.stockQuantity > 0 && product.stockQuantity <= 5;
 
                 return (
-                  <tr key={product.id} className="hover:bg-white/[0.02] transition-colors">
+                  <tr key={product.id} className="hover:bg-muted/40 transition-colors">
                     <td className="py-3.5 px-4">
                       <div className="flex items-center gap-3">
                         {product.imageUrl ? (
                           <img
                             src={product.imageUrl}
                             alt={product.name}
-                            className="w-9 h-9 rounded-lg object-cover bg-slate-800 shrink-0 border border-white/10"
+                            className="w-9 h-9 rounded-lg object-cover bg-muted shrink-0 border border-border"
                           />
                         ) : (
-                          <div className="w-9 h-9 rounded-lg bg-slate-800 flex items-center justify-center text-slate-500 font-mono text-[10px] shrink-0">
+                          <div className="w-9 h-9 rounded-lg bg-muted flex items-center justify-center text-muted-foreground font-mono text-[10px] shrink-0 border border-border">
                             POS
                           </div>
                         )}
                         <div>
-                          <p className="font-semibold text-slate-200 text-sm">{product.name}</p>
-                          <p className="font-mono text-[11px] text-slate-400">{product.sku}</p>
+                          <p className="font-semibold text-foreground text-sm">{product.name}</p>
+                          <p className="font-mono text-[11px] text-muted-foreground">{product.sku}</p>
                         </div>
                       </div>
                     </td>
 
                     <td className="py-3.5 px-4">
-                      <span className="px-2.5 py-1 rounded-md bg-slate-900 text-slate-300 border border-white/5 font-medium">
+                      <span className="px-2.5 py-1 rounded-md bg-card text-foreground border border-border font-medium shadow-xs">
                         {product.category || 'General'}
                       </span>
                     </td>
 
-                    <td className="py-3.5 px-4 font-mono font-semibold text-slate-200 text-sm">
+                    <td className="py-3.5 px-4 font-mono font-semibold text-foreground text-sm">
                       {formatCurrency(product.priceCents)}
                     </td>
 
@@ -249,21 +244,21 @@ export default function InventoryPage() {
                           className={cn(
                             'font-mono font-bold text-sm px-2.5 py-0.5 rounded-md border',
                             isOutOfStock
-                              ? 'bg-rose-500/20 text-rose-400 border-rose-500/30'
+                              ? 'bg-destructive/15 text-destructive border-destructive/30'
                               : isLowStock
-                              ? 'bg-amber-500/20 text-amber-300 border-amber-500/30'
-                              : 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30'
+                              ? 'bg-amber-500/15 text-amber-600 dark:text-amber-300 border-amber-500/30'
+                              : 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-300 border-emerald-500/30'
                           )}
                         >
                           {product.stockQuantity}
                         </span>
-                        <span className="text-[11px] text-slate-500">
+                        <span className="text-[11px] text-muted-foreground">
                           {isOutOfStock ? 'Sold Out' : isLowStock ? 'Low Stock' : 'In Stock'}
                         </span>
                       </div>
                     </td>
 
-                    <td className="py-3.5 px-4 font-mono text-slate-400">
+                    <td className="py-3.5 px-4 font-mono text-muted-foreground">
                       v{product.version}
                     </td>
 
@@ -273,7 +268,7 @@ export default function InventoryPage() {
                           onClick={() => handleStockDelta(product.id, -1)}
                           disabled={isAdjusting || product.stockQuantity <= 0}
                           title="Deduct 1"
-                          className="px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-mono disabled:opacity-40"
+                          className="px-2 py-1 rounded bg-card hover:bg-accent text-foreground text-xs font-mono border border-border disabled:opacity-40 shadow-xs"
                         >
                           -1
                         </button>
@@ -281,7 +276,7 @@ export default function InventoryPage() {
                           onClick={() => handleStockDelta(product.id, 1)}
                           disabled={isAdjusting}
                           title="Add 1"
-                          className="px-2 py-1 rounded bg-brand-500/20 hover:bg-brand-500/30 text-brand-300 border border-brand-500/30 text-xs font-mono"
+                          className="px-2 py-1 rounded bg-primary/15 hover:bg-primary/25 text-primary border border-primary/30 text-xs font-mono font-semibold"
                         >
                           +1
                         </button>
@@ -289,7 +284,7 @@ export default function InventoryPage() {
                           onClick={() => handleStockDelta(product.id, 5)}
                           disabled={isAdjusting}
                           title="Add 5"
-                          className="px-2 py-1 rounded bg-brand-500/20 hover:bg-brand-500/30 text-brand-300 border border-brand-500/30 text-xs font-mono"
+                          className="px-2 py-1 rounded bg-primary/15 hover:bg-primary/25 text-primary border border-primary/30 text-xs font-mono font-semibold"
                         >
                           +5
                         </button>
@@ -297,7 +292,7 @@ export default function InventoryPage() {
                           onClick={() => handleStockDelta(product.id, 20)}
                           disabled={isAdjusting}
                           title="Restock 20"
-                          className="px-2 py-1 rounded bg-brand-500/30 hover:bg-brand-500/40 text-brand-200 border border-brand-500/40 text-xs font-mono font-bold"
+                          className="px-2 py-1 rounded bg-primary text-primary-foreground hover:bg-primary/90 text-xs font-mono font-bold shadow-sm"
                         >
                           +20
                         </button>
@@ -313,18 +308,18 @@ export default function InventoryPage() {
 
       {/* Add Product Modal */}
       {showAddModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-fadeIn">
-          <div className="w-full max-w-md glass-panel rounded-2xl border border-white/10 shadow-2xl overflow-hidden animate-scaleUp">
-            <div className="p-5 border-b border-white/10 flex items-center justify-between bg-slate-900/80">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-md animate-fadeIn">
+          <div className="w-full max-w-md glass-panel rounded-2xl border border-border shadow-2xl overflow-hidden animate-scaleUp">
+            <div className="p-5 border-b border-border flex items-center justify-between bg-card/80">
               <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-lg bg-brand-500/20 text-brand-400 flex items-center justify-center">
+                <div className="w-8 h-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
                   <Plus className="w-4 h-4" />
                 </div>
-                <h3 className="font-heading font-bold text-base text-white">Add New Product</h3>
+                <h3 className="font-heading font-bold text-base text-foreground">Add New Product</h3>
               </div>
               <button
                 onClick={() => setShowAddModal(false)}
-                className="text-slate-400 hover:text-white"
+                className="text-muted-foreground hover:text-foreground"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -332,43 +327,43 @@ export default function InventoryPage() {
 
             <form onSubmit={handleCreateProduct} className="p-5 space-y-4">
               {formError && (
-                <div className="p-3 rounded-xl bg-rose-500/15 border border-rose-500/30 text-rose-300 text-xs flex items-center gap-2">
+                <div className="p-3 rounded-xl bg-destructive/15 border border-destructive/30 text-destructive text-xs flex items-center gap-2">
                   <AlertTriangle className="w-4 h-4 shrink-0" />
                   <span>{formError}</span>
                 </div>
               )}
 
               <div>
-                <label className="text-xs font-medium text-slate-300 block mb-1">Product Name</label>
+                <label className="text-xs font-medium text-foreground block mb-1">Product Name</label>
                 <input
                   type="text"
                   required
                   placeholder="e.g. Lavender Honey Latte"
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  className="w-full px-3 py-2 rounded-xl bg-slate-900 border border-white/10 text-xs text-white focus:outline-none focus:border-brand-500"
+                  className="w-full px-3 py-2 rounded-xl bg-background border border-border text-xs text-foreground focus:outline-none focus:border-primary shadow-inner"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs font-medium text-slate-300 block mb-1">SKU Code</label>
+                  <label className="text-xs font-medium text-foreground block mb-1">SKU Code</label>
                   <input
                     type="text"
                     required
                     placeholder="BEV-LAV-01"
                     value={formData.sku}
                     onChange={(e) => setFormData({ ...formData, sku: e.target.value })}
-                    className="w-full px-3 py-2 rounded-xl bg-slate-900 border border-white/10 text-xs font-mono text-white focus:outline-none focus:border-brand-500 uppercase"
+                    className="w-full px-3 py-2 rounded-xl bg-background border border-border text-xs font-mono text-foreground focus:outline-none focus:border-primary uppercase shadow-inner"
                   />
                 </div>
 
                 <div>
-                  <label className="text-xs font-medium text-slate-300 block mb-1">Category</label>
+                  <label className="text-xs font-medium text-foreground block mb-1">Category</label>
                   <select
                     value={formData.category}
                     onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                    className="w-full px-3 py-2 rounded-xl bg-slate-900 border border-white/10 text-xs text-white focus:outline-none focus:border-brand-500"
+                    className="w-full px-3 py-2 rounded-xl bg-background border border-border text-xs text-foreground focus:outline-none focus:border-primary shadow-inner"
                   >
                     <option value="Beverages">Beverages</option>
                     <option value="Bakery">Bakery</option>
@@ -380,7 +375,7 @@ export default function InventoryPage() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs font-medium text-slate-300 block mb-1">Price (USD $)</label>
+                  <label className="text-xs font-medium text-foreground block mb-1">Price (USD $)</label>
                   <input
                     type="number"
                     step="0.01"
@@ -388,12 +383,12 @@ export default function InventoryPage() {
                     placeholder="5.75"
                     value={formData.price}
                     onChange={(e) => setFormData({ ...formData, price: e.target.value })}
-                    className="w-full px-3 py-2 rounded-xl bg-slate-900 border border-white/10 text-xs font-mono text-white focus:outline-none focus:border-brand-500"
+                    className="w-full px-3 py-2 rounded-xl bg-background border border-border text-xs font-mono text-foreground focus:outline-none focus:border-primary shadow-inner"
                   />
                 </div>
 
                 <div>
-                  <label className="text-xs font-medium text-slate-300 block mb-1">Initial Stock</label>
+                  <label className="text-xs font-medium text-foreground block mb-1">Initial Stock</label>
                   <input
                     type="number"
                     required
@@ -401,19 +396,19 @@ export default function InventoryPage() {
                     placeholder="15"
                     value={formData.stockQuantity}
                     onChange={(e) => setFormData({ ...formData, stockQuantity: e.target.value })}
-                    className="w-full px-3 py-2 rounded-xl bg-slate-900 border border-white/10 text-xs font-mono text-white focus:outline-none focus:border-brand-500"
+                    className="w-full px-3 py-2 rounded-xl bg-background border border-border text-xs font-mono text-foreground focus:outline-none focus:border-primary shadow-inner"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="text-xs font-medium text-slate-300 block mb-1">Image URL (Optional)</label>
+                <label className="text-xs font-medium text-foreground block mb-1">Image URL (Optional)</label>
                 <input
                   type="url"
                   placeholder="https://images.unsplash.com/..."
                   value={formData.imageUrl}
                   onChange={(e) => setFormData({ ...formData, imageUrl: e.target.value })}
-                  className="w-full px-3 py-2 rounded-xl bg-slate-900 border border-white/10 text-xs text-white focus:outline-none focus:border-brand-500"
+                  className="w-full px-3 py-2 rounded-xl bg-background border border-border text-xs text-foreground focus:outline-none focus:border-primary shadow-inner"
                 />
               </div>
 
@@ -421,14 +416,14 @@ export default function InventoryPage() {
                 <button
                   type="button"
                   onClick={() => setShowAddModal(false)}
-                  className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold"
+                  className="px-4 py-2 rounded-xl bg-card hover:bg-accent text-muted-foreground hover:text-foreground text-xs font-semibold border border-border"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="px-5 py-2 rounded-xl bg-brand-500 hover:bg-brand-400 text-slate-950 text-xs font-bold shadow-glow flex items-center gap-1.5"
+                  className="px-5 py-2 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-bold shadow-glow flex items-center gap-1.5"
                 >
                   {isSubmitting ? (
                     <>
