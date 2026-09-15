@@ -42,6 +42,16 @@ async function request<T>(endpoint: string, options?: RequestInit): Promise<ApiR
   }
 }
 
+// Health Check API
+export async function checkBackendHealth(): Promise<boolean> {
+  try {
+    const res = await request<{ status: string }>('/health');
+    return res.ok === true;
+  } catch {
+    return false;
+  }
+}
+
 // Products API
 export async function fetchProducts(
   search?: string,

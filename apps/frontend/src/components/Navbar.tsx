@@ -7,19 +7,16 @@ import { ShoppingBag, Layers, Database, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ThemeToggle } from '@/components/ThemeToggle';
 
+import { checkBackendHealth } from '@/lib/api';
+
 export function Navbar() {
   const pathname = usePathname();
   const [isBackendHealthy, setIsBackendHealthy] = useState<boolean | null>(null);
 
   useEffect(() => {
     const checkHealth = async () => {
-      try {
-        const res = await fetch('http://localhost:4000/api/health');
-        const json = await res.json();
-        setIsBackendHealthy(json.ok === true);
-      } catch {
-        setIsBackendHealthy(false);
-      }
+      const healthy = await checkBackendHealth();
+      setIsBackendHealthy(healthy);
     };
     checkHealth();
     const interval = setInterval(checkHealth, 10000);
