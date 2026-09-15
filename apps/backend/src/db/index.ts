@@ -68,15 +68,43 @@ export async function initDb() {
   if (databaseUrl && !databaseUrl.includes('localhost:5432/pos_db_placeholder')) {
     try {
       console.log('Connecting to PostgreSQL database via DATABASE_URL...');
-      const client = postgres(databaseUrl, { max: 20 });
+
+      // Determine SSL mode based on connection URL
+      const isInternalRailway = databaseUrl.includes('railway.internal');
+      const sslMode = isInternalRailway ? false : 'prefer';
+
+      const client = postgres(databaseUrl, {
+        max: 20,
+        ssl: sslMode,
+        connect_timeout: 10,
+        idle_timeout: 30,
+      });
+
+      // 1. Verify TCP/IP connection to PostgreSQL server
+      await client`SELECT 1`;
+      console.log('✅ PostgreSQL TCP Connection established successfully.');
+
       rawClient = client;
-      console.log('Ensuring PostgreSQL schema and tables exist...');
-      await client.unsafe(INIT_SQL);
+
+      // 2. Ensure schema tables & types exist without failing if already initialized
+      try {
+        console.log('Ensuring PostgreSQL schema and tables exist...');
+        await client.unsafe(INIT_SQL);
+        console.log('✅ PostgreSQL Schema verification completed.');
+      } catch (schemaErr: any) {
+        console.warn('⚠️ PostgreSQL schema verification notice:', schemaErr?.message || schemaErr);
+      }
+
       dbInstance = drizzlePostgres(client, { schema });
-      console.log('Connected to PostgreSQL successfully.');
+      console.log('🚀 Connected to PostgreSQL database successfully.');
       return dbInstance;
-    } catch (err) {
-      console.warn('PostgreSQL connection failed, falling back to embedded PGlite engine:', err);
+    } catch (err: any) {
+      console.error('❌ PostgreSQL Connection Error:', err?.stack || err?.message || err);
+      // In production or Railway, throw error so container restarts or logs exact failure reason
+      if (process.env.NODE_ENV === 'production' || process.env.RAILWAY_ENVIRONMENT) {
+        throw new Error(`Failed to connect to production PostgreSQL database: ${err?.message || err}`);
+      }
+      console.warn('Falling back to embedded PGlite engine for local development fallback...');
     }
   }
 
