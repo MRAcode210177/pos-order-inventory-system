@@ -9,7 +9,13 @@ import type {
   PaymentDto,
 } from '@pos/shared-types';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
+const getApiBase = () => {
+  const envUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
+  const trimmed = envUrl.trim().replace(/\/+$/, '');
+  return trimmed.endsWith('/api') ? trimmed : `${trimmed}/api`;
+};
+
+const API_BASE = getApiBase();
 
 async function request<T>(endpoint: string, options?: RequestInit): Promise<ApiResult<T>> {
   const url = `${API_BASE}${endpoint}`;

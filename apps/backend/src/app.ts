@@ -8,9 +8,13 @@ import type { ApiResult } from '@pos/shared-types';
 export const app = express();
 
 // Middleware
+const allowedOrigins = process.env.CORS_ORIGIN
+  ? process.env.CORS_ORIGIN.split(',').map((o) => o.trim())
+  : '*';
+
 app.use(
   cors({
-    origin: '*', // Allow all origins for easy development / demo
+    origin: allowedOrigins,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'Idempotency-Key'],
   })

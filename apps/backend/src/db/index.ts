@@ -28,8 +28,11 @@ CREATE TABLE IF NOT EXISTS products (
   version INTEGER NOT NULL DEFAULT 0,
   category VARCHAR(64) DEFAULT 'General',
   image_url VARCHAR(512),
+  is_active BOOLEAN NOT NULL DEFAULT TRUE,
   created_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
+
+ALTER TABLE products ADD COLUMN IF NOT EXISTS is_active BOOLEAN NOT NULL DEFAULT TRUE;
 
 CREATE TABLE IF NOT EXISTS orders (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -67,6 +70,8 @@ export async function initDb() {
       console.log('Connecting to PostgreSQL database via DATABASE_URL...');
       const client = postgres(databaseUrl, { max: 20 });
       rawClient = client;
+      console.log('Ensuring PostgreSQL schema and tables exist...');
+      await client.unsafe(INIT_SQL);
       dbInstance = drizzlePostgres(client, { schema });
       console.log('Connected to PostgreSQL successfully.');
       return dbInstance;

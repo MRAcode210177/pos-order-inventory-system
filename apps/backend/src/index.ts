@@ -20,9 +20,9 @@ async function bootstrap() {
     startExpiryWorker(30000);
 
     // 4. Start HTTP Server
-    app.listen(PORT, () => {
+    app.listen(PORT, '0.0.0.0', () => {
       console.log(`
-    POS Backend Server running at http://localhost:${PORT}
+    🚀 POS Backend Server running on port ${PORT} (0.0.0.0:${PORT})
     Endpoints:
    • GET   /api/health
    • GET   /api/products
