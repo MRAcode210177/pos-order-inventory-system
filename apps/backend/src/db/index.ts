@@ -12,13 +12,9 @@ dotenv.config();
 let dbInstance: any = null;
 let rawClient: any = null;
 
-const INIT_SQL = `
-DO $$ BEGIN
-  CREATE TYPE order_status AS ENUM ('PENDING', 'RESERVED', 'PAID', 'COMPLETED', 'CANCELLED', 'EXPIRED');
-EXCEPTION
-  WHEN duplicate_object THEN null;
-END $$;
+const INIT_ENUM_SQL = `CREATE TYPE order_status AS ENUM ('PENDING', 'RESERVED', 'PAID', 'COMPLETED', 'CANCELLED', 'EXPIRED');`;
 
+const INIT_TABLES_SQL = `
 CREATE TABLE IF NOT EXISTS products (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name VARCHAR(255) NOT NULL,
@@ -60,6 +56,28 @@ CREATE TABLE IF NOT EXISTS payments (
 );
 `;
 
+async function applySchema(client: any, isPglite = false) {
+  try {
+    if (isPglite) {
+      await client.exec(INIT_ENUM_SQL);
+    } else {
+      await client.unsafe(INIT_ENUM_SQL);
+    }
+  } catch (e) {
+    // Ignore duplicate type error if enum already exists
+  }
+
+  try {
+    if (isPglite) {
+      await client.exec(INIT_TABLES_SQL);
+    } else {
+      await client.unsafe(INIT_TABLES_SQL);
+    }
+  } catch (e: any) {
+    console.warn('Schema verification notice:', e?.message || e);
+  }
+}
+
 export async function initDb() {
   if (dbInstance) return dbInstance;
 
@@ -69,7 +87,6 @@ export async function initDb() {
     try {
       console.log('Connecting to PostgreSQL database via DATABASE_URL...');
 
-      // Determine SSL mode based on connection URL
       const isInternalRailway = databaseUrl.includes('railway.internal');
       const sslMode = isInternalRailway ? false : 'prefer';
 
@@ -86,21 +103,14 @@ export async function initDb() {
 
       rawClient = client;
 
-      // 2. Ensure schema tables & types exist without failing if already initialized
-      try {
-        console.log('Ensuring PostgreSQL schema and tables exist...');
-        await client.unsafe(INIT_SQL);
-        console.log('✅ PostgreSQL Schema verification completed.');
-      } catch (schemaErr: any) {
-        console.warn('⚠️ PostgreSQL schema verification notice:', schemaErr?.message || schemaErr);
-      }
+      // 2. Ensure schema tables & types exist
+      await applySchema(client, false);
 
       dbInstance = drizzlePostgres(client, { schema });
       console.log('🚀 Connected to PostgreSQL database successfully.');
       return dbInstance;
     } catch (err: any) {
       console.error('❌ PostgreSQL Connection Error:', err?.stack || err?.message || err);
-      // In production or Railway, throw error so container restarts or logs exact failure reason
       if (process.env.NODE_ENV === 'production' || process.env.RAILWAY_ENVIRONMENT) {
         throw new Error(`Failed to connect to production PostgreSQL database: ${err?.message || err}`);
       }
@@ -121,7 +131,7 @@ export async function initDb() {
   console.log(`Using persistent PostgreSQL engine (PGlite at ${dataDir})...`);
   const pglite = new PGlite(dataDir);
   rawClient = pglite;
-  await pglite.exec(INIT_SQL);
+  await applySchema(pglite, true);
   dbInstance = drizzlePglite(pglite, { schema });
   console.log('Persistent PostgreSQL initialized with schema.');
   return dbInstance;
