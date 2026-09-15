@@ -37,10 +37,10 @@ pnpm install
 Copy the example env file for the backend and fill in your values:
 
 ```bash
-cp apps/backend/.env.example apps/backend/.env
+cp "apps/task-01(backend)/.env.example" "apps/task-01(backend)/.env"
 ```
 
-Key variables in `apps/backend/.env`:
+Key variables in `apps/task-01(backend)/.env`:
 
 ```env
 PORT=4000                          # Backend server port
@@ -80,8 +80,8 @@ pnpm dev
 # From project root
 pnpm dev:backend
 
-# Or from apps/backend directly
-cd apps/backend
+# Or from apps/task-01(backend) directly
+cd "apps/task-01(backend)"
 pnpm dev
 ```
 
@@ -96,8 +96,8 @@ API available at: `http://localhost:4000`
 # From project root
 pnpm dev:frontend
 
-# Or from apps/frontend directly
-cd apps/frontend
+# Or from apps/task-02(frontend) directly
+cd "apps/task-02(frontend)"
 pnpm dev
 ```
 
@@ -117,10 +117,10 @@ The backend supports two database modes:
 
 ### Schema Migrations (Drizzle Kit)
 
-All commands below run from `apps/backend/`:
+All commands below run from `apps/task-01(backend)/`:
 
 ```bash
-cd apps/backend
+cd "apps/task-01(backend)"
 ```
 
 #### Generate a new migration file from schema changes
@@ -157,8 +157,8 @@ The seeder is **idempotent** — it skips if products already exist.
 # From project root
 pnpm seed
 
-# Or from apps/backend directly
-cd apps/backend
+# Or from apps/task-01(backend) directly
+cd "apps/task-01(backend)"
 pnpm seed
 ```
 
@@ -188,11 +188,11 @@ pnpm --filter @pos/frontend build
 
 ```bash
 # Backend (after building)
-cd apps/backend
+cd "apps/task-01(backend)"
 pnpm start            # node dist/index.js on port 4000
 
 # Frontend (after building)
-cd apps/frontend
+cd "apps/task-02(frontend)"
 pnpm start            # next start on port 3000
 ```
 
@@ -235,8 +235,8 @@ Tests the stock reservation system under high concurrency:
 # From project root
 pnpm test:concurrency
 
-# Or from apps/backend directly
-cd apps/backend
+# Or from apps/task-01(backend) directly
+cd "apps/task-01(backend)"
 pnpm test:concurrency
 ```
 
@@ -269,7 +269,7 @@ Base URL: `http://localhost:4000`
 
 ```bash
 # Frontend (Next.js ESLint)
-cd apps/frontend
+cd "apps/task-02(frontend)"
 pnpm lint
 ```
 
@@ -298,8 +298,8 @@ pnpm ls -r --depth 0
 
 | File                          | Purpose                                   |
 |-------------------------------|-------------------------------------------|
-| `apps/backend/.env`           | Local backend secrets (not committed)     |
-| `apps/backend/.env.example`   | Template — copy this to create `.env`     |
+| `apps/task-01(backend)/.env`           | Local backend secrets (not committed)     |
+| `apps/task-01(backend)/.env.example`   | Template — copy this to create `.env`     |
 
 ---
 
