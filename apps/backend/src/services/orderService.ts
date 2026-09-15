@@ -63,8 +63,8 @@ export async function createOrder(request: CreateOrderRequest): Promise<OrderDto
       });
     }
 
-    // Create order in RESERVED state with a 10-minute expiry window
-    const reservationExpiry = new Date(Date.now() + 10 * 60 * 1000);
+    // Create order in RESERVED state with a 5-minute expiry window (per assessment spec)
+    const reservationExpiry = new Date(Date.now() + 5 * 60 * 1000);
 
     const [order] = await tx
       .insert(orders)
