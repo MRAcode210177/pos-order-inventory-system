@@ -36,6 +36,21 @@ app.use((req, res, next) => {
   next();
 });
 
+// Root & API Info Handlers
+app.get(['/', '/api'], (_req, res) => {
+  res.json({
+    ok: true,
+    name: 'POS, Order & Inventory Management API',
+    status: 'online',
+    version: '1.0.0',
+    endpoints: {
+      health: '/api/health',
+      products: '/api/products',
+      orders: '/api/orders',
+    },
+  });
+});
+
 // Health Check
 app.get('/api/health', (_req, res) => {
   const body: ApiResult<{ status: string; timestamp: string }> = {
