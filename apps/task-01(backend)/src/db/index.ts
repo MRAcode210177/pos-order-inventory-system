@@ -119,9 +119,10 @@ export async function initDb() {
   }
 
   // Persistent embedded PostgreSQL engine (PGlite)
-  const baseDir = process.cwd().includes('apps/backend') || process.cwd().includes('apps\\backend')
+  const isBackendDir = process.cwd().includes('task-01(backend)') || process.cwd().includes('apps/backend') || process.cwd().includes('apps\\backend');
+  const baseDir = isBackendDir
     ? process.cwd()
-    : path.resolve(process.cwd(), 'apps/backend');
+    : path.resolve(process.cwd(), 'apps/task-01(backend)');
   const dataDir = path.resolve(baseDir, '.data/pglite');
 
   if (!fs.existsSync(dataDir)) {
