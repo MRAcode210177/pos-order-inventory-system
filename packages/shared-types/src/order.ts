@@ -27,6 +27,7 @@ export interface OrderDto {
   payment?: {
     id: string;
     status: string;
+    paymentMethod?: string;
     transactionId?: string;
     createdAt?: string;
   } | null;
@@ -39,4 +40,5 @@ export interface CreateOrderRequest {
 export interface PayOrderRequest {
   cardNumber: string;
   idempotencyKey: string;
+  paymentMethod?: string;
 }

@@ -22,6 +22,8 @@ import {
   FileText,
   Loader2,
   Calendar,
+  Wallet,
+  Banknote,
 } from 'lucide-react';
 
 export default function OrdersPage() {
@@ -123,26 +125,24 @@ export default function OrdersPage() {
   return (
     <div className="w-full space-y-6">
       {/* Header */}
-      <div className="glass-card rounded-2xl p-5 border border-border flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm">
+      <div className="glass-card rounded-2xl p-5 border border-border flex items-center justify-between gap-4 shadow-sm">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary shadow-sm">
             <Layers className="w-5 h-5" />
           </div>
           <div>
             <h1 className="font-heading font-extrabold text-2xl text-foreground">Order Management</h1>
-            <p className="text-xs text-muted-foreground">
-              Audit trail of reservations, payments, stock settlements, and customer receipts.
-            </p>
           </div>
         </div>
 
         <button
           onClick={loadOrders}
           disabled={isLoading}
-          className="flex items-center gap-2 px-4 py-2 rounded-xl bg-card hover:bg-accent text-muted-foreground hover:text-foreground text-xs font-semibold border border-border transition-all self-start sm:self-auto shadow-sm"
+          title="Refresh orders"
+          aria-label="Refresh orders"
+          className="p-2.5 rounded-xl bg-card hover:bg-accent text-muted-foreground hover:text-foreground text-xs font-semibold border border-border transition-all shadow-sm"
         >
-          <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin text-primary' : ''}`} />
-          <span>Sync Orders</span>
+          <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin text-primary' : ''}`} />
         </button>
       </div>
 
@@ -263,9 +263,28 @@ export default function OrdersPage() {
                       <td className="py-3.5 px-4 hidden lg:table-cell">
                         {order.payment ? (
                           <div className="space-y-0.5">
-                            <span className="inline-flex items-center gap-1 text-[11px] font-medium text-foreground bg-card px-2 py-0.5 rounded border border-border">
-                              <CreditCard className="w-3 h-3 text-primary" /> Card (Mock)
-                            </span>
+                            {(() => {
+                              const method = (order.payment.paymentMethod || 'CARD').toUpperCase();
+                              if (method === 'PAYPAL') {
+                                return (
+                                  <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-sky-400 bg-sky-500/10 px-2 py-0.5 rounded border border-sky-500/30">
+                                    <Wallet className="w-3 h-3 text-sky-400" /> PayPal
+                                  </span>
+                                );
+                              }
+                              if (method === 'CASH') {
+                                return (
+                                  <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/30">
+                                    <Banknote className="w-3 h-3 text-emerald-400" /> Cash
+                                  </span>
+                                );
+                              }
+                              return (
+                                <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-primary bg-primary/10 px-2 py-0.5 rounded border border-primary/30">
+                                  <CreditCard className="w-3 h-3 text-primary" /> Card
+                                </span>
+                              );
+                            })()}
                             {order.payment.transactionId && (
                               <p className="font-mono text-[10px] text-muted-foreground truncate max-w-[140px]">
                                 {order.payment.transactionId}

@@ -144,6 +144,7 @@ export async function getOrderById(orderId: string): Promise<OrderDto> {
       ? {
           id: paymentRecord.id,
           status: paymentRecord.status,
+          paymentMethod: paymentRecord.paymentMethod || 'CARD',
           transactionId: paymentRecord.transactionId ?? undefined,
           createdAt: new Date(paymentRecord.createdAt).toISOString(),
         }
@@ -221,6 +222,7 @@ export async function listOrders(
         ? {
             id: paymentRecord.id,
             status: paymentRecord.status,
+            paymentMethod: paymentRecord.paymentMethod || 'CARD',
             transactionId: paymentRecord.transactionId ?? undefined,
             createdAt: new Date(paymentRecord.createdAt).toISOString(),
           }
