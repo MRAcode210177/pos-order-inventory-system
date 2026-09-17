@@ -21,4 +21,5 @@ export const payOrderSchema = z.object({
     .string()
     .min(8, 'Idempotency key must be at least 8 characters')
     .max(128, 'Idempotency key too long'),
+  paymentMethod: z.string().max(32, 'Payment method too long').optional(),
 }) satisfies z.ZodType<PayOrderRequest>;

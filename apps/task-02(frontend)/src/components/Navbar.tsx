@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { ShoppingBag, Layers, Database, Sparkles } from 'lucide-react';
+import { ShoppingBag, Layers, Database, Sparkles, Bell } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ThemeToggle } from '@/components/ThemeToggle';
 
@@ -24,7 +24,7 @@ export function Navbar() {
   }, []);
 
   const navItems = [
-    { href: '/', label: 'POS Terminal', icon: ShoppingBag },
+    { href: '/', label: 'Products', icon: ShoppingBag },
     { href: '/orders', label: 'Order Lifecycle', icon: Layers },
     { href: '/inventory', label: 'Inventory Manager', icon: Database },
   ];
@@ -71,7 +71,7 @@ export function Navbar() {
           })}
         </nav>
 
-        {/* Right Actions: Health Status & Theme Toggle */}
+        {/* Right Actions: Health Status, Cashier Badge & Theme Toggle */}
         <div className="flex items-center gap-2.5 shrink-0">
           {/* Backend Status Indicator */}
           <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-card border border-border text-xs shadow-sm">
@@ -90,8 +90,30 @@ export function Navbar() {
               />
             </div>
             <span className="font-medium text-foreground text-[11px] hidden lg:inline">
-              {isBackendHealthy === true ? 'Backend Live' : isBackendHealthy === false ? 'API Offline' : 'Connecting...'}
+              {isBackendHealthy === true ? 'Live' : isBackendHealthy === false ? 'Offline' : 'Connecting...'}
             </span>
+          </div>
+
+          {/* Vertical Divider */}
+          <div className="h-6 w-px bg-border/60 mx-0.5 hidden sm:block" />
+
+          {/* Cashier User Profile Badge (UI Display) */}
+          <div className="flex items-center gap-2">
+            <div className="relative flex items-center justify-center w-8 h-8 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 font-bold text-[10px]">
+              <span>MRA</span>
+              <span className="w-2 h-2 bg-emerald-500 rounded-full border border-background absolute -bottom-0.5 -right-0.5" />
+            </div>
+            <div className="hidden sm:flex flex-col text-left leading-none">
+              <span className="text-xs font-bold text-foreground">MRA</span>
+              <span className="text-[10px] font-semibold text-emerald-500 dark:text-emerald-400 mt-0.5">Cashier Lead</span>
+            </div>
+            <button
+              type="button"
+              aria-label="Notifications"
+              className="w-7 h-7 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-accent transition-colors ml-0.5"
+            >
+              <Bell className="w-3.5 h-3.5" />
+            </button>
           </div>
 
           {/* Theme Toggle Button */}

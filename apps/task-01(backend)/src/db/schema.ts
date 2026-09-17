@@ -37,6 +37,7 @@ export const payments = pgTable('payments', {
   id: uuid('id').defaultRandom().primaryKey(),
   orderId: uuid('order_id').references(() => orders.id, { onDelete: 'cascade' }).notNull(),
   status: varchar('status', { length: 20 }).notNull(),
+  paymentMethod: varchar('payment_method', { length: 32 }).default('CARD'),
   idempotencyKey: varchar('idempotency_key', { length: 128 }).notNull().unique(),
   transactionId: varchar('transaction_id', { length: 128 }),
   createdAt: timestamp('created_at').defaultNow().notNull(),

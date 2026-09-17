@@ -5,6 +5,7 @@ import type { ProductDto, CreateProductRequest, UpdateProductRequest, Pagination
 import { fetchProducts, updateProductStock, createProduct, updateProduct, deleteProduct, toggleProductStatus } from '@/lib/api';
 import { formatCurrency, cn } from '@/lib/utils';
 import { Pagination } from '@/components/Pagination';
+import { CATEGORY_TREE, getParentCategory, getSubcategoriesForParent } from '@/config/categories';
 import {
   Database,
   Plus,
@@ -35,6 +36,7 @@ export default function InventoryPage() {
 
   // Edit & Delete Modal States
   const [editingProduct, setEditingProduct] = useState<ProductDto | null>(null);
+  const [editMainCategory, setEditMainCategory] = useState<string>('Electronics');
   const [editFormData, setEditFormData] = useState<{
     name: string;
     sku: string;
@@ -47,7 +49,7 @@ export default function InventoryPage() {
     sku: '',
     price: '',
     stockQuantity: '',
-    category: 'Beverages',
+    category: 'Audio & Headphones',
     imageUrl: '',
   });
   const [editError, setEditError] = useState<string | null>(null);
@@ -59,6 +61,7 @@ export default function InventoryPage() {
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
   // Add Product Form State
+  const [addMainCategory, setAddMainCategory] = useState<string>('Electronics');
   const [formData, setFormData] = useState<{
     name: string;
     sku: string;
@@ -71,7 +74,7 @@ export default function InventoryPage() {
     sku: '',
     price: '',
     stockQuantity: '10',
-    category: 'Beverages',
+    category: 'Audio & Headphones',
     imageUrl: '',
   });
 
@@ -82,13 +85,6 @@ export default function InventoryPage() {
       setProducts(result.data);
       if (result.pagination) {
         setPagination(result.pagination);
-      } else {
-        setPagination({
-          total: result.data.length,
-          totalPages: Math.max(1, Math.ceil(result.data.length / limit)),
-          currentPage: targetPage,
-          limit,
-        });
       }
     }
     setIsLoading(false);
@@ -98,7 +94,11 @@ export default function InventoryPage() {
     loadInventory(page);
   }, [page]);
 
-  // Quick Stock Adjustment
+  const handlePageChange = (newPage: number) => {
+    setPage(newPage);
+  };
+
+  // Stock Delta Adjustment
   const handleStockDelta = async (productId: string, delta: number) => {
     setAdjustingId(productId);
     const result = await updateProductStock(productId, delta);
@@ -124,7 +124,7 @@ export default function InventoryPage() {
     }
   };
 
-  // Create Product Submit
+  // Add Product Submit
   const handleCreateProduct = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
@@ -133,28 +133,15 @@ export default function InventoryPage() {
     const priceCents = Math.round(parseFloat(formData.price) * 100);
     const stockQty = parseInt(formData.stockQuantity, 10);
 
-    if (isNaN(priceCents) || priceCents < 0) {
-      setFormError('Please enter a valid price');
-      setIsSubmitting(false);
-      return;
-    }
-
-    if (isNaN(stockQty) || stockQty < 0) {
-      setFormError('Please enter a valid stock quantity');
-      setIsSubmitting(false);
-      return;
-    }
-
-    const payload: CreateProductRequest = {
-      name: formData.name.trim(),
-      sku: formData.sku.trim().toUpperCase(),
+    const result = await createProduct({
+      name: formData.name,
+      sku: formData.sku,
       priceCents,
       stockQuantity: stockQty,
       category: formData.category,
-      imageUrl: formData.imageUrl.trim() || undefined,
-    };
+      imageUrl: formData.imageUrl || undefined,
+    });
 
-    const result = await createProduct(payload);
     setIsSubmitting(false);
 
     if (result.ok) {
@@ -164,7 +151,7 @@ export default function InventoryPage() {
         sku: '',
         price: '',
         stockQuantity: '10',
-        category: 'Beverages',
+        category: 'Audio & Headphones',
         imageUrl: '',
       });
       loadInventory();
@@ -175,13 +162,15 @@ export default function InventoryPage() {
 
   // Open Edit Modal
   const handleOpenEdit = (product: ProductDto) => {
+    const parent = getParentCategory(product.category || '') || 'Electronics';
+    setEditMainCategory(parent);
     setEditingProduct(product);
     setEditFormData({
       name: product.name,
       sku: product.sku,
       price: (product.priceCents / 100).toFixed(2),
       stockQuantity: product.stockQuantity.toString(),
-      category: product.category || 'Beverages',
+      category: product.category || 'Audio & Headphones',
       imageUrl: product.imageUrl || '',
     });
     setEditError(null);
@@ -263,9 +252,6 @@ export default function InventoryPage() {
           </div>
           <div>
             <h1 className="font-heading font-extrabold text-2xl text-foreground">Inventory Manager</h1>
-            <p className="text-xs text-muted-foreground">
-              Live stock levels, row versions, inline editing, and instant replenishment controls.
-            </p>
           </div>
         </div>
 
@@ -273,10 +259,11 @@ export default function InventoryPage() {
           <button
             onClick={() => loadInventory()}
             disabled={isLoading}
-            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-card hover:bg-accent text-muted-foreground hover:text-foreground text-xs font-semibold border border-border transition-all shadow-sm"
+            title="Refresh inventory"
+            aria-label="Refresh inventory"
+            className="p-2.5 rounded-xl bg-card hover:bg-accent text-muted-foreground hover:text-foreground text-xs font-semibold border border-border transition-all shadow-sm"
           >
-            <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin text-primary' : ''}`} />
-            <span>Sync</span>
+            <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin text-primary' : ''}`} />
           </button>
           <button
             onClick={() => setShowAddModal(true)}
@@ -433,12 +420,12 @@ export default function InventoryPage() {
                     </td>
 
                     <td className="py-3.5 px-4">
-                      <div className="flex items-center gap-1">
+                      <div className="inline-flex items-center p-1 rounded-xl bg-card border border-border gap-1 shadow-xs">
                         <button
                           onClick={() => handleStockDelta(product.id, -1)}
                           disabled={isAdjusting || product.stockQuantity <= 0}
                           title="Deduct 1"
-                          className="px-2 py-1 rounded bg-card hover:bg-accent text-foreground text-xs font-mono border border-border disabled:opacity-40 shadow-xs"
+                          className="h-7 min-w-[32px] px-2 rounded-lg bg-background hover:bg-destructive/15 text-foreground hover:text-destructive text-xs font-mono font-semibold border border-border disabled:opacity-30 transition-colors"
                         >
                           -1
                         </button>
@@ -446,7 +433,7 @@ export default function InventoryPage() {
                           onClick={() => handleStockDelta(product.id, 1)}
                           disabled={isAdjusting}
                           title="Add 1"
-                          className="px-2 py-1 rounded bg-primary/15 hover:bg-primary/25 text-primary border border-primary/30 text-xs font-mono font-semibold"
+                          className="h-7 min-w-[32px] px-2 rounded-lg bg-primary/10 hover:bg-primary/20 text-primary border border-primary/30 text-xs font-mono font-bold transition-colors"
                         >
                           +1
                         </button>
@@ -454,7 +441,7 @@ export default function InventoryPage() {
                           onClick={() => handleStockDelta(product.id, 5)}
                           disabled={isAdjusting}
                           title="Add 5"
-                          className="px-2 py-1 rounded bg-primary/15 hover:bg-primary/25 text-primary border border-primary/30 text-xs font-mono font-semibold"
+                          className="h-7 min-w-[32px] px-2 rounded-lg bg-primary/15 hover:bg-primary/25 text-primary border border-primary/35 text-xs font-mono font-bold transition-colors"
                         >
                           +5
                         </button>
@@ -462,7 +449,7 @@ export default function InventoryPage() {
                           onClick={() => handleStockDelta(product.id, 20)}
                           disabled={isAdjusting}
                           title="Restock 20"
-                          className="px-2 py-1 rounded bg-primary text-primary-foreground hover:bg-primary/90 text-xs font-mono font-bold shadow-sm"
+                          className="h-7 min-w-[36px] px-2.5 rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-mono font-extrabold shadow-sm transition-all active:scale-95"
                         >
                           +20
                         </button>
@@ -562,16 +549,37 @@ export default function InventoryPage() {
                 </div>
 
                 <div>
-                  <label className="text-xs font-medium text-foreground block mb-1">Category</label>
+                  <label className="text-xs font-medium text-foreground block mb-1">Main Category</label>
+                  <select
+                    value={addMainCategory}
+                    onChange={(e) => {
+                      const parent = e.target.value;
+                      setAddMainCategory(parent);
+                      const subs = getSubcategoriesForParent(parent);
+                      setFormData({ ...formData, category: subs[0] || parent });
+                    }}
+                    className="w-full px-3 py-2 rounded-xl bg-background border border-border text-xs text-foreground focus:outline-none focus:border-primary shadow-inner"
+                  >
+                    {CATEGORY_TREE.map((g) => (
+                      <option key={g.id} value={g.name}>
+                        {g.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="text-xs font-medium text-foreground block mb-1">Subcategory</label>
                   <select
                     value={formData.category}
                     onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                    className="w-full px-3 py-2 rounded-xl bg-background border border-border text-xs text-foreground focus:outline-none focus:border-primary shadow-inner"
+                    className="w-full px-3 py-2 rounded-xl bg-background border border-border text-xs text-foreground focus:outline-none focus:border-primary font-bold shadow-inner"
                   >
-                    <option value="Beverages">Beverages</option>
-                    <option value="Bakery">Bakery</option>
-                    <option value="Merchandise">Merchandise</option>
-                    <option value="Food">Food</option>
+                    {getSubcategoriesForParent(addMainCategory).map((sub) => (
+                      <option key={sub} value={sub}>
+                        {sub}
+                      </option>
+                    ))}
                   </select>
                 </div>
               </div>
@@ -698,16 +706,37 @@ export default function InventoryPage() {
                 </div>
 
                 <div>
-                  <label className="text-xs font-medium text-foreground block mb-1">Category</label>
+                  <label className="text-xs font-medium text-foreground block mb-1">Main Category</label>
+                  <select
+                    value={editMainCategory}
+                    onChange={(e) => {
+                      const parent = e.target.value;
+                      setEditMainCategory(parent);
+                      const subs = getSubcategoriesForParent(parent);
+                      setEditFormData({ ...editFormData, category: subs[0] || parent });
+                    }}
+                    className="w-full px-3 py-2 rounded-xl bg-background border border-border text-xs text-foreground focus:outline-none focus:border-primary shadow-inner"
+                  >
+                    {CATEGORY_TREE.map((g) => (
+                      <option key={g.id} value={g.name}>
+                        {g.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="text-xs font-medium text-foreground block mb-1">Subcategory</label>
                   <select
                     value={editFormData.category}
                     onChange={(e) => setEditFormData({ ...editFormData, category: e.target.value })}
-                    className="w-full px-3 py-2 rounded-xl bg-background border border-border text-xs text-foreground focus:outline-none focus:border-primary shadow-inner"
+                    className="w-full px-3 py-2 rounded-xl bg-background border border-border text-xs text-foreground focus:outline-none focus:border-primary font-bold shadow-inner"
                   >
-                    <option value="Beverages">Beverages</option>
-                    <option value="Bakery">Bakery</option>
-                    <option value="Merchandise">Merchandise</option>
-                    <option value="Food">Food</option>
+                    {getSubcategoriesForParent(editMainCategory).map((sub) => (
+                      <option key={sub} value={sub}>
+                        {sub}
+                      </option>
+                    ))}
                   </select>
                 </div>
               </div>

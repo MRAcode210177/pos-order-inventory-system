@@ -57,6 +57,7 @@ export function CheckoutModal({
     const result = await payOrder(order.id, {
       cardNumber: cardNumber.replace(/\s+/g, ''),
       idempotencyKey,
+      paymentMethod,
     });
 
     setIsLoading(false);
@@ -343,7 +344,7 @@ export function CheckoutModal({
                 </button>
                 <button
                   type="submit"
-                  disabled={isLoading || !cardNumber}
+                  disabled={isLoading || (paymentMethod === 'CARD' && !cardNumber)}
                   className="flex-[2] py-2.5 px-4 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-sm shadow-glow flex items-center justify-center gap-2 transition-all disabled:opacity-50"
                 >
                   {isLoading ? (

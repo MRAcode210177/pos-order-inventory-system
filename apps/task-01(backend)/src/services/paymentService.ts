@@ -34,6 +34,7 @@ export async function processPayment(
           id: existingPayment.id,
           orderId: existingPayment.orderId,
           status: existingPayment.status,
+          paymentMethod: existingPayment.paymentMethod || 'CARD',
           idempotencyKey: existingPayment.idempotencyKey,
           transactionId: existingPayment.transactionId ?? undefined,
           createdAt: new Date(existingPayment.createdAt).toISOString(),
@@ -105,6 +106,7 @@ export async function processPayment(
       await tx.insert(payments).values({
         orderId,
         status: 'FAILED',
+        paymentMethod: request.paymentMethod || 'CARD',
         idempotencyKey: request.idempotencyKey,
       });
 
@@ -117,6 +119,7 @@ export async function processPayment(
       .values({
         orderId,
         status: 'SUCCESS',
+        paymentMethod: request.paymentMethod || 'CARD',
         idempotencyKey: request.idempotencyKey,
         transactionId: gatewayResult.transactionId,
       })
