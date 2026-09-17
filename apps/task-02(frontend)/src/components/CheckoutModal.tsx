@@ -16,7 +16,8 @@ import {
   RefreshCw,
   Copy,
   Receipt,
-  Sparkles,
+  Wallet,
+  Banknote,
 } from 'lucide-react';
 
 interface CheckoutModalProps {
@@ -32,6 +33,7 @@ export function CheckoutModal({
   onSuccess,
   onCancelReservation,
 }: CheckoutModalProps) {
+  const [paymentMethod, setPaymentMethod] = useState<'CARD' | 'PayPal' | 'CASH'>('CARD');
   const [cardNumber, setCardNumber] = useState('4242424242424242');
   const [idempotencyKey, setIdempotencyKey] = useState(
     () => `idemp_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`
@@ -41,11 +43,11 @@ export function CheckoutModal({
   const [completedPayment, setCompletedPayment] = useState<PaymentDto | null>(null);
   const [isCopied, setIsCopied] = useState(false);
 
-  const testCards = [
-    { label: 'Standard Visa (Success)', number: '4242424242424242' },
-    { label: 'Card Decline (402)', number: '4000000000000000' },
-    { label: 'Fraud Flag (402)', number: '4000000000008888' },
-  ];
+  const paymentMethods = [
+    { id: 'CARD', label: 'CARD', icon: CreditCard },
+    { id: 'PayPal', label: 'PayPal', icon: Wallet },
+    { id: 'CASH', label: 'CASH', icon: Banknote },
+  ] as const;
 
   const handlePay = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -213,49 +215,83 @@ export function CheckoutModal({
                 </div>
               )}
 
-              {/* 1-Click Test Cards Bar */}
+              {/* Payment Method Selector (CARD, PayPal, CASH) */}
               <div className="space-y-1.5">
-                <div className="flex items-center justify-between text-[11px] text-muted-foreground">
-                  <span className="flex items-center gap-1">
-                    <Sparkles className="w-3 h-3 text-primary" /> 1-Click Simulation Cards:
-                  </span>
-                </div>
+                <label className="text-xs font-semibold text-foreground">Select Payment Method</label>
                 <div className="grid grid-cols-3 gap-2">
-                  {testCards.map((c) => (
-                    <button
-                      key={c.number}
-                      type="button"
-                      onClick={() => setCardNumber(c.number)}
-                      className={`px-2.5 py-1.5 rounded-lg text-[11px] font-medium border text-center transition-all ${
-                        cardNumber === c.number
-                          ? 'bg-primary/15 text-primary border-primary/40 shadow-sm font-semibold'
-                          : 'bg-card text-muted-foreground border-border hover:border-foreground/20 hover:text-foreground'
-                      }`}
-                    >
-                      {c.label}
-                    </button>
-                  ))}
+                  {paymentMethods.map((m) => {
+                    const Icon = m.icon;
+                    const isSelected = paymentMethod === m.id;
+                    return (
+                      <button
+                        key={m.id}
+                        type="button"
+                        onClick={() => {
+                          setPaymentMethod(m.id);
+                          setCardNumber('4242424242424242');
+                        }}
+                        className={`flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-xs font-semibold border transition-all ${
+                          isSelected
+                            ? 'bg-primary/15 text-primary border-primary/40 shadow-sm font-bold'
+                            : 'bg-card text-muted-foreground border-border hover:border-foreground/20 hover:text-foreground'
+                        }`}
+                      >
+                        <Icon className="w-4 h-4" />
+                        <span>{m.label}</span>
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 
-              {/* Card Number Input */}
-              <div className="space-y-1.5">
-                <label className="text-xs font-medium text-foreground flex items-center justify-between">
-                  <span>Card Number</span>
-                  <span className="text-[10px] text-muted-foreground font-mono">16-digits simulated</span>
-                </label>
-                <div className="relative">
-                  <input
-                    type="text"
-                    value={cardNumber}
-                    onChange={(e) => setCardNumber(e.target.value)}
-                    required
-                    placeholder="4242 •••• •••• 4242"
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-background border border-border focus:border-primary focus:ring-1 focus:ring-primary text-sm font-mono text-foreground placeholder-muted-foreground outline-none transition-all pl-10"
-                  />
-                  <CreditCard className="w-4 h-4 text-muted-foreground absolute left-3.5 top-3" />
+              {/* Payment Method Content */}
+              {paymentMethod === 'CARD' && (
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-foreground flex items-center justify-between">
+                    <span>Card Number</span>
+                    <span className="text-[10px] text-primary font-semibold">Standard Visa (Auto-Selected)</span>
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={cardNumber}
+                      onChange={(e) => setCardNumber(e.target.value)}
+                      required
+                      placeholder="4242 •••• •••• 4242"
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-background border border-border focus:border-primary focus:ring-1 focus:ring-primary text-sm font-mono text-foreground placeholder-muted-foreground outline-none transition-all pl-10"
+                    />
+                    <CreditCard className="w-4 h-4 text-muted-foreground absolute left-3.5 top-3" />
+                  </div>
                 </div>
-              </div>
+              )}
+
+              {paymentMethod === 'PayPal' && (
+                <div className="p-3.5 rounded-xl bg-sky-500/10 border border-sky-500/20 text-xs space-y-1">
+                  <div className="flex items-center justify-between font-semibold text-sky-400">
+                    <span className="flex items-center gap-1.5">
+                      <Wallet className="w-4 h-4" /> PayPal Express
+                    </span>
+                    <span className="text-[10px] bg-sky-500/20 px-2 py-0.5 rounded-full font-mono">Ready</span>
+                  </div>
+                  <p className="text-muted-foreground text-[11px]">
+                    Customer will pay via store PayPal account integration.
+                  </p>
+                </div>
+              )}
+
+              {paymentMethod === 'CASH' && (
+                <div className="p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-xs space-y-1">
+                  <div className="flex items-center justify-between font-semibold text-emerald-400">
+                    <span className="flex items-center gap-1.5">
+                      <Banknote className="w-4 h-4" /> Cash Payment
+                    </span>
+                    <span className="text-[10px] bg-emerald-500/20 px-2 py-0.5 rounded-full font-mono">Exact Amount</span>
+                  </div>
+                  <p className="text-muted-foreground text-[11px]">
+                    Collect {formatCurrency(order.totalCents)} cash from customer to complete order.
+                  </p>
+                </div>
+              )}
 
               {/* Idempotency Key Input */}
               <div className="space-y-1.5">

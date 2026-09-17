@@ -3,7 +3,7 @@
 import React from 'react';
 import type { ProductDto } from '@pos/shared-types';
 import { formatCurrency, cn } from '@/lib/utils';
-import { ShoppingCart, Trash2, Plus, Minus, ShieldCheck, ArrowRight, Loader2, AlertCircle } from 'lucide-react';
+import { ShoppingCart, Trash2, Plus, Minus, ArrowRight, Loader2, AlertCircle } from 'lucide-react';
 
 export interface CartItem {
   product: ProductDto;
@@ -161,12 +161,6 @@ export function CartDrawer({
             </div>
           </div>
 
-          {/* Concurrency Safe Guarantee Note */}
-          <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground bg-primary/5 px-2.5 py-1.5 rounded-lg border border-primary/15">
-            <ShieldCheck className="w-3.5 h-3.5 text-primary shrink-0" />
-            <span>Row-level locks hold stock for 10 min during checkout</span>
-          </div>
-
           {/* Action Button */}
           <button
             onClick={onCheckout}
@@ -176,7 +170,7 @@ export function CartDrawer({
             {isLoading ? (
               <>
                 <Loader2 className="w-4 h-4 animate-spin text-primary-foreground" />
-                Reserving Stock via PostgreSQL...
+                Processing...
               </>
             ) : (
               <>

@@ -42,12 +42,9 @@ export function Navbar() {
           <div>
             <div className="flex items-center gap-2">
               <span className="font-heading font-extrabold text-lg text-foreground tracking-tight">
-                Nexus<span className="text-brand-600 dark:text-brand-400">POS</span>
+                MRA<span className="text-brand-600 dark:text-brand-400">Store</span>
               </span>
             </div>
-            <p className="text-[11px] text-muted-foreground font-medium hidden sm:block">
-              Concurrency-Safe Inventory & Order Engine
-            </p>
           </div>
         </Link>
 

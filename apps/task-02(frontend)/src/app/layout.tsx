@@ -4,9 +4,9 @@ import { ThemeProvider } from '@/components/ThemeProvider';
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'NexusPOS — Concurrency-Safe POS Order & Inventory System',
+  title: 'MRAStore',
   description:
-    'Fullstack TypeScript Point of Sale with deterministic row-level locking, PostgreSQL, and Next.js.',
+    'Fullstack TypeScript Point of Sale application.',
 };
 
 export default function RootLayout({
